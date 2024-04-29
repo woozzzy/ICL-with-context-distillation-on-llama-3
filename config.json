@@ -9,7 +9,8 @@
 		"local": "./data/",
 		"remote": "cnn_dailymail",
 		"ver": "3.0.0",
-		"distill": true
+		"distill": true,
+		"use_preprocessed": false
 	},
 	"hyperparameters": {}
 }
