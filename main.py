@@ -14,9 +14,15 @@ if __name__ == "__main__":
 
     logger.info(f"Running script in mode: {args['mode']}")
 
-    dataset = get_dataset(cfg)
-    if cfg["dataset"]["distill"]:
+    dataset = None
+    if cfg["dataset"]["use_preprocessed"]:
+        dataset = dataset.load_from_disk(f"data/distill_{cfg["dataset"]["remote"]}.tf")
+    elif cfg["dataset"]["distill"]:
+        dataset = get_dataset(cfg)
         dataset = distill(dataset)
+        dataset.save_to_disk(f"data/distill_{cfg["dataset"]["remote"]}.tf")
+    else:
+        dataset = get_dataset(cfg)
 
     tokenizer = LlamaTokenizer.from_pretrained(cfg["model"]["remote"])
     model = LlamaForCausalLM.from_pretrained(cfg["model"]["remote"])
