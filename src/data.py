@@ -14,13 +14,9 @@ def get_dataset(cfg):
 
 
 def distill(dataset):
-    try:
-        dataset = dataset.map(distill_dataset, batched=True)
-        logger.info("Distilled the dataset")
-        return dataset
-    except Exception as e:
-        logger.error(f"Error in distill: {e}")
-        raise e
+    dataset = dataset.map(distill_dataset, num_proc=4, batched=True)
+    logger.info("Distilled the dataset")
+    return dataset
 
 
 def distill_article(article):

@@ -1,11 +1,11 @@
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import LlamaTokenizer, LlamaForCausalLM, Trainer, TrainingArguments
 from rouge_score import rouge_scorer
 
 from src.io import hf_login, load_config, get_args
 from src.logs import logger
 from src.data import get_dataset, distill
-
+from src.rouge import evaluate_summaries
 
 if __name__ == "__main__":
     hf_login()
@@ -14,57 +14,47 @@ if __name__ == "__main__":
 
     logger.info(f"Running script in mode: {args['mode']}")
 
+    dataset = get_dataset(cfg)
+    if cfg["dataset"]["distill"]:
+        dataset = distill(dataset)
+
+    tokenizer = LlamaTokenizer.from_pretrained(cfg["model"]["remote"])
+    model = LlamaForCausalLM.from_pretrained(cfg["model"]["remote"])
+
+    if torch.cuda.is_available():
+        logger.debug("CUDA is available")
+        model.to("cuda")
+    else:
+        logger.error("CUDA is not available")
+        raise Exception("CUDA is not available")
+
+    logger.info(f"Loaded model: {cfg['model']['remote']}")
+
     if args["mode"] == "train":
-        dataset = get_dataset(cfg)[args["mode"]]
-        if cfg["dataset"]["distill"]:
-            dataset = distill(dataset)
+        tokenized_dataset = dataset.map(lambda x: tokenizer(x["article"]), batched=True)
 
-        tokenizer = AutoTokenizer.from_pretrained(cfg["model"]["remote"])
-        model = AutoModelForCausalLM.from_pretrained(cfg["model"]["remote"])
+        training_args = TrainingArguments(
+            output_dir="./llama_finetuned",
+            evaluation_strategy="epoch",
+            learning_rate=2e-5,
+            per_device_train_batch_size=1,
+            per_device_eval_batch_size=1,
+            num_train_epochs=3,
+            weight_decay=0.01,
+            save_strategy="epoch",
+            load_best_model_at_end=True,
+        )
 
-        if torch.cuda.is_available():
-            logger.debug("CUDA is available")
-            model.to("cuda")
-        else:
-            logger.error("CUDA is not available")
-            raise Exception("CUDA is not available")
+        trainer = Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=tokenized_dataset["train"],
+            eval_dataset=tokenized_dataset["validation"],
+            tokenizer=tokenizer,
+        )
 
-        logger.info(f"Loaded model: {cfg['model']['remote']}")
+        trainer.train()
 
     elif args["mode"] == "test":
-        dataset = get_dataset(cfg)[args["mode"]]
-        if cfg["dataset"]["distill"]:
-            dataset = distill(dataset)
-
-        tokenizer = AutoTokenizer.from_pretrained(cfg["model"]["remote"])
-        model = AutoModelForCausalLM.from_pretrained(cfg["model"]["remote"])
-
-        if torch.cuda.is_available():
-            logger.debug("CUDA is available")
-            model.to("cuda")
-        else:
-            logger.error("CUDA is not available")
-            raise Exception("CUDA is not available")
-
-        logger.info(f"Loaded model: {cfg['model']['remote']}")
-
-        scorer = rouge_scorer.RougeScorer(["rouge1"], use_stemmer=True)
-        scores = []
-
-        for example in dataset:
-            # Get prompt
-            prompt = example["article"]
-
-            # Generate summary
-            inputs = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True, max_length=1024).to("cuda")
-            outputs = model.generate(
-                **inputs, max_length=150, min_length=40, length_penalty=2.0, num_beams=4, early_stopping=True
-            )
-            summary = tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-            # Calculate ROUGE score
-            score = scorer.score(example["highlights"], summary)["rouge1"].fmeasure
-            scores.append(score)
-
-        avg_score = sum(scores) / len(scores)
-        logger.info(f"Average ROUGE-1 F1 score: {avg_score}")
+        score = evaluate_summaries(model, tokenizer, dataset["test"])
+        logger.info(f"Average ROUGE-1 F1 score: {score}")
