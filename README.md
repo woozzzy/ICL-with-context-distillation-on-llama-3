@@ -2,7 +2,7 @@
 
 CS 4644 Final Project
 
-#### Dependencies:
+## Dependencies:
 
 ```bash
 conda create -n llama python=3.11 \
@@ -11,8 +11,13 @@ pip install torch torchvision torchaudio transformers datasets accelerate huggin
 python -m spacy download en_core_web_sm
 ```
 
-#### HuggingFace Authentication:
+## HuggingFace Authentication:
 
 -   Create `.env` file in root directory using `.env.example` as a template.
 -   Copy your HuggingFace Access Token to `.env`.
     -   See [HuggingFace Docs](https://huggingface.co/docs/hub/en/security-tokens) for information on how to get token.
+
+## To-Do:
+
+-   [ ] Refactor Rouge metric calculation to use `evaluate`: [Rouge Metric](https://huggingface.co/spaces/evaluate-metric/rouge)
+-   [ ] Implement `accelerate`: [Accelerate](https://huggingface.co/docs/transformers/en/accelerate)
