@@ -3,10 +3,13 @@
 		"local": "./models/",
 		"remote": "meta-llama/Meta-Llama-3-8B",
 		"upload_model_to_hf": false,
-		"use_local_model": true
+		"use_local_model": false
 	},
 	"dataset": {
-		"src": "mozilla-foundation/common_voice_16_1"
+		"local": "./data/",
+		"remote": "cnn_dailymail",
+		"ver": "3.0.0",
+		"distill": true
 	},
 	"hyperparameters": {}
 }

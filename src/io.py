@@ -10,15 +10,6 @@ load_dotenv()
 HF_ACCESS_TOKEN = getenv("HF_ACCESS_TOKEN")
 
 
-def hf_login():
-    try:
-        login(token=HF_ACCESS_TOKEN)
-        logger.info("Logged in to Hugging Face")
-    except Exception as e:
-        logger.error(f"Error logging in to Hugging Face: {e}")
-        raise e
-
-
 def get_args():
     parser = argparse.ArgumentParser(description="Fine-tunes a modle.")
     parser.add_argument(
@@ -39,6 +30,15 @@ def get_args():
     args = parser.parse_args().__dict__
     logger.info(f"Args: \n{pformat(args, indent=4, width=1, sort_dicts=False,)}\n")
     return args
+
+
+def hf_login():
+    try:
+        login(token=HF_ACCESS_TOKEN)
+        logger.info("Logged in to Hugging Face")
+    except Exception as e:
+        logger.error(f"Error logging in to Hugging Face: {e}")
+        raise e
 
 
 def load_config(file_path: str = "config.json"):
