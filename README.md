@@ -20,4 +20,5 @@ python -m spacy download en_core_web_sm
 ## To-Do:
 
 -   [ ] Refactor Rouge metric calculation to use `evaluate`: [Rouge Metric](https://huggingface.co/spaces/evaluate-metric/rouge)
--   [ ] Implement `accelerate`: [Accelerate](https://huggingface.co/docs/transformers/en/accelerate)
+-   [ ] Implement multi-gpu training via `accelerate`: [Accelerate](https://huggingface.co/docs/transformers/en/accelerate)
+-   [ ] Implement alternative distillation methods in `data.py`
