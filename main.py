@@ -1,5 +1,5 @@
 import torch
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from rouge_score import rouge_scorer
 
 from src.io import hf_login, load_config, get_args
@@ -20,7 +20,7 @@ if __name__ == "__main__":
             dataset = distill(dataset)
 
         tokenizer = AutoTokenizer.from_pretrained(cfg["model"]["remote"])
-        model = AutoModelForSeq2SeqLM.from_pretrained(cfg["model"]["remote"])
+        model = AutoModelForCausalLM.from_pretrained(cfg["model"]["remote"])
 
         if torch.cuda.is_available():
             logger.debug("CUDA is available")
@@ -37,7 +37,7 @@ if __name__ == "__main__":
             dataset = distill(dataset)
 
         tokenizer = AutoTokenizer.from_pretrained(cfg["model"]["remote"])
-        model = AutoModelForSeq2SeqLM.from_pretrained(cfg["model"]["remote"])
+        model = AutoModelForCausalLM.from_pretrained(cfg["model"]["remote"])
 
         if torch.cuda.is_available():
             logger.debug("CUDA is available")
