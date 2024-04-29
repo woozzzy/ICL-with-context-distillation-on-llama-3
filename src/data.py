@@ -14,16 +14,21 @@ def get_dataset(cfg):
 
 
 def distill(dataset):
+    dataset = dataset.map(_distill_dataset, num_proc=4, batched=True)
+    logger.info("Distilled the dataset")
+    return dataset
+
+
+def _distill_dataset(dataset):
     try:
-        dataset = dataset.map(distill_dataset, batched=True)
-        logger.info("Distilled the dataset")
+        dataset["article"] = [_distill_article(article) for article in dataset["article"]]
         return dataset
     except Exception as e:
-        logger.error(f"Error in distill: {e}")
+        logger.error(f"Error in distill_dataset: {e}")
         raise e
 
 
-def distill_article(article):
+def _distill_article(article):
     doc = nlp(article)
     key_entities = set([ent.text for ent in doc.ents if ent.label_ in ["PERSON", "ORG", "GPE"]])
 
@@ -36,12 +41,3 @@ def distill_article(article):
     ]
 
     return ". ".join(filtered_context)
-
-
-def distill_dataset(dataset):
-    try:
-        dataset["article"] = [distill_article(article) for article in dataset["article"]]
-        return dataset
-    except Exception as e:
-        logger.error(f"Error in distill_dataset: {e}")
-        raise e
