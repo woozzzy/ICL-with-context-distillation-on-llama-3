@@ -12,7 +12,7 @@ from transformers import (
     set_seed,
 )
 from trl.commands.cli_utils import TrlParser
-from trl import setup_chat_format, SFTTrainer
+from trl import SFTTrainer
 
 from src.utils import (
     logger,
