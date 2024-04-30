@@ -17,10 +17,12 @@ if __name__ == "__main__":
     dataset = None
     if cfg["dataset"]["use_preprocessed"]:
         dataset = dataset.load_from_disk(f"data/distill_{cfg["dataset"]["remote"]}.tf")
+        logger.info(f"Loaded preprocessed dataset: {cfg['dataset']['remote']}")
     elif cfg["dataset"]["distill"]:
         dataset = get_dataset(cfg)
         dataset = distill(dataset)
         dataset.save_to_disk(f"data/distill_{cfg["dataset"]["remote"]}.tf")
+        logger.info(f"Saved preprocessed dataset: {cfg['dataset']['remote']}")
     else:
         dataset = get_dataset(cfg)
 
