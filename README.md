@@ -8,6 +8,7 @@ CS 4644 Final Project
 - [ ] Perform In-Context Learning based on certain Prompts
 - [ ] Implement Context Distillation for Task
 - [ ] Fine Tune via Context Distillation
+- [ ] Evaluate Context Distillation Results
 
 ## Dependencies:
 
