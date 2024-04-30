@@ -201,6 +201,7 @@ def train(args, training_args):
 
     ############################    Train    ############################
 
+    print("Start training ...")
     # checkpoint = None
     # if training_args.resume_from_checkpoint is not None:
     #     checkpoint = training_args.resume_from_checkpoint
