@@ -1,0 +1,74 @@
+############################################
+## Script Parameters
+############################################
+## Mode: prep_data, train, test
+mode: 'train'
+
+## HF Model ID and Local Path
+model_id: 'meta-llama/Meta-Llama-3-8B' # Hugging Face model id
+model_path: './output/meta-llama-3-8b-qlora_no_robots/run_1/checkpoints'
+
+## HF Dataset ID and Local Path
+dataset_id: 'HuggingFaceH4/no_robots'
+preprocessed: true
+num_workers: 4
+
+## Max Sequence Length for Model and Packing of Dataset
+max_seq_len: 2048 # 3072
+
+## Boolean Flags
+use_local_model: false
+upload_model: false
+distill: false
+use_instruct_template: false
+
+############################################
+## Training Parameters
+############################################
+## Temporary Output Directory for Model Checkpoints
+output_dir: './'
+
+## Report Metrics to Tensorboard
+report_to: 'tensorboard'
+
+## Learning Rate and Scheduler
+learning_rate: 0.0002
+lr_scheduler_type: 'constant'
+
+## Number of Training Epochs
+num_train_epochs: 3
+
+## Batch Sizes
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+
+## Gradient Accumulation and Checkpointing
+gradient_checkpointing: true
+gradient_accumulation_steps: 2 # number of steps before performing a backward/update pass
+
+## Optimizer
+optim: adamw_torch
+max_grad_norm: 0.3
+warmup_ratio: 0.03
+weight_decay: 0.01
+
+## Logging and Saving
+logging_steps: 10 # log every 10 steps
+save_strategy: epoch # save checkpoint every epoch
+evaluation_strategy: epoch # evaluate every epoch
+
+## Precision
+bf16: true
+tf32: true
+
+## FSDP parameters: https://huggingface.co/docs/transformers/main/en/fsdp
+fsdp: 'full_shard auto_wrap offload' # remove offload if enough GPU memory
+fsdp_config:
+    backward_prefetch: 'backward_pre'
+    forward_prefetch: 'false'
+    use_orig_params: 'false'
+
+## Miscellaneous
+seed: 42
+disable_tqdm: False
+load_best_model_at_end: True
