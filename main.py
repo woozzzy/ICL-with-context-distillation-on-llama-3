@@ -69,8 +69,8 @@ def test(args, training_args):
         split="train",
         num_proc=args.num_workers,
     )
-    rand_idx = random.randint(0, len(test_dataset) - 1)
-    test_samples = test_dataset[rand_idx]["messages"][:2]
+    rand_indicies = random.sample(range(len(test_dataset)), 10)
+    test_samples = test_dataset[rand_indicies]["messages"][:2]
 
     ############################    Model/Tokenizer    ############################
 
@@ -95,13 +95,15 @@ def test(args, training_args):
         temperature=0.6,
         top_p=0.9,
     )
-    response = outputs[0][input_ids.shape[-1] :]
+    responses = outputs[0][input_ids.shape[-1] :]
 
     ############################    Log for Visual Comparison    ############################
 
-    logger.info(f"**Query:**\n{test_dataset[rand_idx]['messages'][1]['content']}\n")
-    logger.info(f"**Original Answer:**\n{test_dataset[rand_idx]['messages'][2]['content']}\n")
-    logger.info(f"**Generated Answer:**\n{tokenizer.decode(response,skip_special_tokens=True)}")
+    with open(os.path.join(training_args.output_dir, "test_samples.txt"), "w") as f:
+        for i, idx in enumerate(rand_indicies):
+            f.write(f"**Query {i+1}:**\n{test_dataset[idx]['messages'][1]['content']}\n")
+            f.write(f"**Original Answer {i+1}:**\n{test_dataset[idx]['messages'][2]['content']}\n")
+            f.write(f"**Generated Answer {i+1}:**\n{tokenizer.decode(responses[i],skip_special_tokens=True)}\n\n")
 
 
 def incontextlearning_extract(args, training_args):
