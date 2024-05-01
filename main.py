@@ -30,7 +30,7 @@ def prep_data(args, training_args):
 
     ############################    Add System Prompt    ############################
 
-    prompt = """You are Llama, an AI assistant created by Sunwoo to be helpful and honest. Your knowledge spans a wide range of topics, allowing you to engage in substantive conversations and provide analysis on complex subjects."""
+    prompt = """You are Llama, an AI assistant created by deep learning researchers to be helpful and honest. Your knowledge spans a wide range of topics, allowing you to engage in substantive conversations and provide analysis on complex subjects."""
 
     def _add_prompt(sample):
         if sample["messages"][0]["role"] == "system":
@@ -118,7 +118,7 @@ def incontextlearning_extract(args, training_args):
     examples = dataset[random_indices]["messages"]
     dataset = dataset.select((i for i in range(len(dataset)) if i not in set(random_indices)))
 
-    prompt = """Examples start:"""
+    prompt = """You are Llama, an AI assistant created by deep learning researchers to be helpful and honest. Your knowledge spans a wide range of topics, allowing you to engage in substantive conversations and provide analysis on complex subjects.\n\nExamples start:"""
 
     for i in range(len(examples), step=2):
         prompt += f"\n\n**Prompt:**\n{examples[i]['content']}\n**Response:**\n{examples[i+1]['content']}"
