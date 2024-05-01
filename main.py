@@ -1,7 +1,7 @@
 import os
 import random
 import torch
-from datasets import load_dataset
+from accelerate import Accelerator
 from peft import LoraConfig, AutoPeftModelForCausalLM
 from pprint import pformat, pprint
 from transformers import (
@@ -14,228 +14,94 @@ from transformers import (
 from trl.commands.cli_utils import TrlParser
 from trl import SFTTrainer
 
-from src.utils import (
-    logger,
-    init_logger,
-    hf_login,
-    get_output_path,
-    get_chat_template,
-    ScriptArgs,
-)
+from src.args import ScriptArgs
+from src.utils import *
+from src.data import *
 
-
-def prep_data(args, training_args):
-    logger.info("Preparing data ...")
-    dataset = load_dataset("HuggingFaceH4/no_robots", num_proc=args.num_workers)
-
-    ############################    Add System Prompt    ############################
-
-    prompt = """You are Llama, an AI assistant created by deep learning researchers to be helpful and honest. Your knowledge spans a wide range of topics, allowing you to engage in substantive conversations and provide analysis on complex subjects."""
-
-    def _add_prompt(sample):
-        if sample["messages"][0]["role"] == "system":
-            return sample
-        else:
-            sample["messages"] = [{"role": "system", "content": prompt}] + sample["messages"]
-            return sample
-
-    columns_to_remove = list(dataset["train"].features)
-    columns_to_remove.remove("messages")
-    dataset = dataset.map(_add_prompt, remove_columns=columns_to_remove, batched=False)
-
-    ############################    Filter Conversations with Wrong # of Turns    ############################
-
-    dataset["train"] = dataset["train"].filter(lambda x: len(x["messages"][1:]) % 2 == 0)
-    dataset["test"] = dataset["test"].filter(lambda x: len(x["messages"][1:]) % 2 == 0)
-
-    ############################    Distill Context    ############################
-
-    ## TODO: Implement context distillation
-
-    ############################    Save to Disk    ############################
-
-    dataset["train"].to_json("data/train_dataset.json", orient="records", force_ascii=False)
-    dataset["test"].to_json("data/test_dataset.json", orient="records", force_ascii=False)
-
-
-def test(args, training_args):
-    logger.info("Testing ...")
-
+def test(args, train_args):
     ############################    Dataset    ############################
 
-    test_dataset = load_dataset(
-        "json",
-        data_files="data/test_dataset.json",
-        split="train",
-        num_proc=args.num_workers,
-    )
-    rand_indicies = random.sample(range(len(test_dataset)), 10)
-    test_samples = test_dataset[rand_indicies]["messages"][:2]
+    dataset = get_dataset(args, split="train")
+    sample_idx = random.sample(range(len(dataset)), 3)
+    samples = [dataset[i]["messages"][:2] for i in sample_idx]
 
-    ############################    Model/Tokenizer    ############################
+    ############################    Model    ############################
 
+    model_id = args.model_path if args.use_local_model else args.model_id
     if args.is_peft:
         model = AutoPeftModelForCausalLM.from_pretrained(
-            args.model_path if args.use_local_model else args.model_id,
+            model_id,
             torch_dtype=torch.bfloat16,
             quantization_config={"load_in_4bit": True},
             device_map="auto",
         )
     else:
         model = AutoModelForCausalLM.from_pretrained(
-            args.model_path if args.use_local_model else args.model_id,
+            model_id,
             attn_implementation="flash_attention_2",  # "sdpa"
             torch_dtype=torch.bfloat16,
-            use_cache=False if training_args.gradient_checkpointing else True,
-        )
-
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path if args.use_local_model else args.model_id)
-
-    ############################    Generate    ############################
-
-    input_ids = tokenizer.apply_chat_template(test_samples, add_generation_prompt=True, return_tensors="pt").to(
-        model.device
-    )
-    outputs = model.generate(
-        input_ids,
-        max_new_tokens=512,
-        eos_token_id=tokenizer.eos_token_id,
-        do_sample=True,
-        temperature=0.6,
-        top_p=0.9,
-    )
-    responses = outputs[0][input_ids.shape[-1] :]
-
-    ############################    Log for Visual Comparison    ############################
-
-    with open(os.path.join(training_args.output_dir, "test_samples.txt"), "w") as f:
-        for i, idx in enumerate(rand_indicies):
-            f.write(f"**Query {i+1}:**\n{test_dataset[idx]['messages'][1]['content']}\n")
-            f.write(f"**Original Answer {i+1}:**\n{test_dataset[idx]['messages'][2]['content']}\n")
-            f.write(f"**Generated Answer {i+1}:**\n{tokenizer.decode(responses[i],skip_special_tokens=True)}\n\n")
-
-
-def incontextlearning_extract(args, training_args):
-    logger.info("In-context learning ...")
-
-    ############################    Dataset    ############################
-
-    dataset = load_dataset("HuggingFaceH4/no_robots", num_proc=args.num_workers, split="train")
-    dataset = dataset.filter(lambda x: x["category"] == "Extract")
-
-    random_indices = random.sample(range(len(dataset)), 10)
-    examples = dataset[random_indices]["messages"][:2]
-    dataset = dataset.select(([i for i in range(len(dataset)) if i not in set(random_indices)]))
-
-    prompt = """You are Llama, an AI assistant created by deep learning researchers to be helpful and honest. Your knowledge spans a wide range of topics, allowing you to engage in substantive conversations and provide analysis on complex subjects.\n\nExamples start:"""
-
-    for i in range(len(examples) - 1):
-        prompt += f"\n\n**Prompt:**\n{examples[i][0]['content']}\n**Response:**\n{examples[i+1][1]['content']}"
-        i += 1
-        if i < len(examples) - 1:
-            prompt += "\n\n---"
-
-    prompt = prompt + "\n\nExamples end."
-
-    def _add_prompt(sample):
-        if sample["messages"][0]["role"] == "system":
-            return sample
-        else:
-            sample["messages"] = [{"role": "system", "content": prompt}] + sample["messages"]
-            return sample
-
-    columns_to_remove = list(dataset.features)
-    columns_to_remove.remove("messages")
-    dataset = dataset.map(_add_prompt, remove_columns=columns_to_remove, batched=False)
-
-    dataset = dataset.filter(lambda x: len(x["messages"][1:]) % 2 == 0)
-    dataset.to_json("data/incontext_dataset.json", orient="records", force_ascii=False)
-
-    test_indices = random.sample(range(len(dataset)), 10)
-    test_samples = dataset[test_indices]["messages"][:2]
-
-    ############################    Model/Tokenizer    ############################
-
-    if args.is_peft:
-        model = AutoPeftModelForCausalLM.from_pretrained(
-            args.model_path if args.use_local_model else args.model_id,
-            torch_dtype=torch.bfloat16,
-            quantization_config={"load_in_4bit": True},
             device_map="auto",
+            use_cache=False if train_args.gradient_checkpointing else True,
         )
-    else:
-        model = AutoModelForCausalLM.from_pretrained(
-            args.model_path if args.use_local_model else args.model_id,
-            attn_implementation="flash_attention_2",  # "sdpa"
-            torch_dtype=torch.bfloat16,
-            use_cache=False if training_args.gradient_checkpointing else True,
-        )
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path if args.use_local_model else args.model_id)
-
-    ############################    Generate    ############################
-
-    input_ids = tokenizer.apply_chat_template(test_samples, add_generation_prompt=True, return_tensors="pt").to(
-        model.device
-    )
-    outputs = model.generate(
-        input_ids,
-        max_new_tokens=512,
-        eos_token_id=tokenizer.eos_token_id,
-        do_sample=True,
-        temperature=0.6,
-        top_p=0.9,
-    )
-    responses = outputs[0][input_ids.shape[-1] :]
-
-    ############################    Log for Visual Comparison    ############################
-
-    with open(os.path.join(training_args.output_dir, "incontext_samples.txt"), "w") as f:
-        for i, idx in enumerate(test_indices):
-            f.write(f"**Query {i+1}:**\n{dataset[idx]['messages'][1]['content']}\n")
-            f.write(f"**Original Answer {i+1}:**\n{dataset[idx]['messages'][2]['content']}\n")
-            f.write(f"**Generated Answer {i+1}:**\n{tokenizer.decode(responses[i],skip_special_tokens=True)}\n\n")
-
-
-def train(args, training_args):
-    logger.info("Training ...")
-    os.makedirs(os.path.join(output_path, "checkpoints"))
-
-    ############################    Dataset    ############################
-
-    if not args.preprocessed:
-        prep_data(args, training_args)
-
-    train_dataset = load_dataset(
-        "json",
-        data_files=training_args.train_dataset_path,
-        split="train",
-        num_proc=args.num_workers,
-    )
-    test_dataset = load_dataset(
-        "json",
-        data_files=training_args.test_dataset_path,
-        split="train",
-        num_proc=args.num_workers,
-    )
 
     ############################    Tokenizer    ############################
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model_id, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True, padding_side='left', chat_template=get_template(args))
     tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.chat_template = get_chat_template(args.use_instruct_template)
 
-    def _apply_template(examples):
-        return {"text": tokenizer.apply_chat_template(examples["messages"], tokenize=False)}
+    input_ids = tokenizer.apply_chat_template(
+        samples, 
+        max_length=args.max_seq_len, 
+        padding=True, 
+        truncation=True, 
+        add_generation_prompt=True, 
+        return_tensors="pt"
+    ).to(model.device)
 
-    train_dataset = train_dataset.map(_apply_template, remove_columns=["messages"])
-    test_dataset = test_dataset.map(_apply_template, remove_columns=["messages"])
+    ############################    Inference    ############################
+    
+    logger.info("Beginning generation.")
 
-    # Log random samples from the processed training set
-    with training_args.main_process_first(desc="Log a few random samples from the processed training set"):
-        for index in random.sample(range(len(train_dataset)), 2):
-            logger.debug(train_dataset[index]["text"] + "\n")
+    outputs = model.generate(
+        input_ids,
+        max_new_tokens=512,
+        eos_token_id=tokenizer.eos_token_id,
+        do_sample=True,
+        temperature=0.6,
+        top_p=0.9,
+    )
+    responses = tokenizer.batch_decode([x[input_ids.shape[-1]:] for x in outputs], skip_special_tokens=(not args.is_instruct))
+    
+    logger.info("Finished generation.")
 
-    ############################    Model    ############################
+    ############################    Export for Visual Comparison    ############################
+
+    with open(os.path.join(train_args.output_dir, "test_results.txt"), "w") as f:
+        for i, idx in enumerate(sample_idx):
+            prompt = dataset[idx]['messages'][0]['content']
+            question = dataset[idx]['messages'][1]['content']
+            answer = dataset[idx]['messages'][2]['content']
+            response = responses[i]
+            sep = "--------------------------------------------------"
+
+            f.write(f"{sep+sep}\nPrompt:\n{prompt}\n{sep}\nQuestion:\n{question}\n{sep}\nAnswer:\n{answer}\n{sep}\nResponse:\n{response}\n")
+
+def train(args, train_args):
+    ############################    Tokenizer    ############################
+
+    tokenizer = AutoTokenizer.from_pretrained(args.model_id, use_fast=True, chat_template=get_template(args))
+    tokenizer.pad_token = tokenizer.eos_token
+
+    ############################    Dataset    ############################
+
+    train_dataset = get_dataset(args)
+    test_dataset = get_dataset(args, split="test")
+    
+    train_dataset = train_dataset.map(lambda x: {"text": tokenizer.apply_chat_template(x["messages"], tokenize=False)}, remove_columns=["messages"])
+    test_dataset = test_dataset.map(lambda x: {"text": tokenizer.apply_chat_template(x["messages"], tokenize=False)}, remove_columns=["messages"])
+    log_samples(train_args, train_dataset)
+
+    ############################    Quantization    ############################
 
     torch_dtype = torch.bfloat16
     quant_storage_dtype = torch.bfloat16
@@ -248,15 +114,18 @@ def train(args, training_args):
         bnb_4bit_quant_storage=quant_storage_dtype,
     )
 
+    ############################    Model    ############################
+
     model = AutoModelForCausalLM.from_pretrained(
         args.model_id,
         quantization_config=quantization_config,
         attn_implementation="flash_attention_2",  # "sdpa"
         torch_dtype=quant_storage_dtype,
-        use_cache=False if training_args.gradient_checkpointing else True,
+        device_map="auto",
+        use_cache=False if train_args.gradient_checkpointing else True,
     )
 
-    if training_args.gradient_checkpointing:
+    if train_args.gradient_checkpointing:
         model.gradient_checkpointing_enable()
 
     ############################    PEFT    ############################
@@ -268,14 +137,14 @@ def train(args, training_args):
         bias="none",
         target_modules="all-linear",
         task_type="CAUSAL_LM",
-        modules_to_save=["lm_head", "embed_tokens"] if args.use_instruct_template else None,
+        modules_to_save=["lm_head", "embed_tokens"] if args.is_instruct else None,
     )
 
     ############################    SFTTrainer    ############################
 
     trainer = SFTTrainer(
         model=model,
-        args=training_args,
+        args=train_args,
         train_dataset=train_dataset,
         dataset_text_field="text",
         eval_dataset=test_dataset,
@@ -293,45 +162,53 @@ def train(args, training_args):
 
     ############################    Train    ############################
 
-    print("Start training ...")
-    # checkpoint = None
-    # if training_args.resume_from_checkpoint is not None:
-    #     checkpoint = training_args.resume_from_checkpoint
-    # trainer.train(resume_from_checkpoint=checkpoint)
+    logger.info("Starting training ...")
+
+    os.makedirs(os.path.join(train_args.output_dir, "checkpoints"))
+    checkpoint = None
+    if train_args.resume_from_checkpoint is not None:
+        checkpoint = train_args.resume_from_checkpoint
+    trainer.train(resume_from_checkpoint=checkpoint)
 
     ############################    Save Model    ############################
 
-    # if trainer.is_fsdp_enabled:
-    #     trainer.accelerator.state.fsdp_plugin.set_state_dict_type("FULL_STATE_DICT")
-    # trainer.save_model()
-
+    if trainer.is_fsdp_enabled:
+        trainer.accelerator.state.fsdp_plugin.set_state_dict_type("FULL_STATE_DICT")
+    trainer.save_model()
 
 if __name__ == "__main__":
-    parser = TrlParser((ScriptArgs, TrainingArguments))
-    args, training_args = parser.parse_args_and_config()
-
-    output_path = get_output_path(args)
-    init_logger(output_path)
     hf_login()
 
-    set_seed(training_args.seed)
+    ############################    Parse Args and Config    ############################
+    
+    parser = TrlParser((ScriptArgs, TrainingArguments))
+    args, train_args = parser.parse_args_and_config()
 
-    training_args.output_dir = output_path
-    if training_args.gradient_checkpointing:
-        training_args.gradient_checkpointing_kwargs = {"use_reentrant": False}
+    train_args.output_dir = get_output_path(args)
+    if train_args.seed == -1:
+        train_args.seed = random.randint(0, 100000)
+        logger.info(f"Seed set to {train_args.seed}")
+    set_seed(train_args.seed)
+    if train_args.gradient_checkpointing:
+        train_args.gradient_checkpointing_kwargs = {"use_reentrant": False}
 
     logger.debug(f"Arguments: \n{pformat(args.__dict__)}\n")
-    logger.debug(f"Training Arguments: \n{pformat(training_args.__dict__)}\n")
+    logger.debug(f"Training Arguments: \n{pformat(train_args.__dict__)}\n")
 
-    # Run specified mode
-    if args.mode == "prep_data":
-        prep_data(args, training_args)
-    elif args.mode == "test":
-        test(args, training_args)
+    ############################    Login to HF and Run Mode    ############################
+
+    logger.info(f"Running Mode: {args.mode}")
+
+    if args.mode == "test":
+        test(args, train_args)
     elif args.mode == "train":
-        train(args, training_args)
-    elif args.mode == "incontextlearning_extract":
-        incontextlearning_extract(args, training_args)
+        train(args, train_args)
     else:
         logger.error(f"Unknown mode: {args.mode}")
         raise ValueError(f"Unknown mode: {args.mode}")
+
+    ############################    Cleanup    ############################
+
+    logger.info("Performing Cleanup ...")
+    move_slurm_files(train_args)
+    logger.info("Done")
