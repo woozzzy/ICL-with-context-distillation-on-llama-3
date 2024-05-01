@@ -64,7 +64,7 @@ done
 
 set -- "${POSITIONAL_ARGS[@]}"
 
-RUN_COMMAND=(python main.py --config $CONFIG)
+RUN_COMMAND=(python src/main.py --config $CONFIG)
 
 if [ -n "$CLEAN" ]; then
   rm "$BATCH_FILE"
@@ -78,9 +78,9 @@ fi
 if [ -n "$USE_TORCHRUN" ] && [ -n "$ACCELERATE_USE_FSDP" ]; then
   RUN_COMMAND=(ACCELERATE_USE_FSDP=1 FSDP_CPU_RAM_EFFICIENT_LOADING=1 torchrun --nproc_per_node=$NPROC_PER_NODE main.py --config $CONFIG)
 elif [ -n "$ACCELERATE_USE_FSDP" ]; then
-  RUN_COMMAND=(ACCELERATE_USE_FSDP=1 FSDP_CPU_RAM_EFFICIENT_LOADING=1 python main.py --config $CONFIG)
+  RUN_COMMAND=(ACCELERATE_USE_FSDP=1 FSDP_CPU_RAM_EFFICIENT_LOADING=1 src/python main.py --config $CONFIG)
 elif [ -n "$USE_TORCHRUN" ]; then
-  RUN_COMMAND=(torchrun --nproc_per_node=$NPROC_PER_NODE main.py --config $CONFIG)
+  RUN_COMMAND=(torchrun --nproc_per_node=$NPROC_PER_NODE src/main.py --config $CONFIG)
 fi
 
 if [ -n "$USE_SLURM" ]; then  
