@@ -1,6 +1,6 @@
-import os
 import random
 import torch
+import evaluate
 from accelerate import Accelerator
 from peft import LoraConfig, AutoPeftModelForCausalLM
 from pprint import pformat, pprint
@@ -21,9 +21,9 @@ from src.data import *
 def test(args, train_args):
     ############################    Dataset    ############################
 
-    dataset = get_dataset(args, split="train")
-    sample_idx = random.sample(range(len(dataset)), 3)
-    samples = [dataset[i]["messages"][:2] for i in sample_idx]
+    dataset = get_dataset(args, train_args, split="train")
+    sample_idx = random.sample(range(len(dataset)), 10)
+    samples = dataset[sample_idx]["document"]
 
     ############################    Model    ############################
 
@@ -49,14 +49,14 @@ def test(args, train_args):
     tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True, padding_side='left', chat_template=get_template(args))
     tokenizer.pad_token = tokenizer.eos_token
 
-    input_ids = tokenizer.apply_chat_template(
+    input_ids = tokenizer(
         samples, 
-        max_length=args.max_seq_len, 
-        padding=True, 
-        truncation=True, 
-        add_generation_prompt=True, 
+        max_length=args.max_seq_len,
+        padding=True,
+        truncation=True,
         return_tensors="pt"
-    ).to(model.device)
+    ).input_ids.to(model.device)
+
 
     ############################    Inference    ############################
     
@@ -64,117 +64,42 @@ def test(args, train_args):
 
     outputs = model.generate(
         input_ids,
-        max_new_tokens=512,
+        max_new_tokens=64,
         eos_token_id=tokenizer.eos_token_id,
         do_sample=True,
         temperature=0.6,
         top_p=0.9,
     )
-    responses = tokenizer.batch_decode([x[input_ids.shape[-1]:] for x in outputs], skip_special_tokens=(not args.is_instruct))
-    
     logger.info("Finished generation.")
+
+    predictions = tokenizer.batch_decode(outputs, skip_special_tokens=(not args.is_instruct))
+    
+    prompts, references = [], []
+    for sample in dataset.select(sample_idx):
+        prompts.append(sample['document'])
+        references.append(sample['summary'])
+
+    ############################    Evaluation    ############################
+
+    rouge = evaluate.load('rouge')
+    results = rouge.compute(predictions=predictions, references=references)
+
+    logger.info(f"Results: {results}")
 
     ############################    Export for Visual Comparison    ############################
 
     with open(os.path.join(train_args.output_dir, "test_results.txt"), "w") as f:
-        for i, idx in enumerate(sample_idx):
-            prompt = dataset[idx]['messages'][0]['content']
-            question = dataset[idx]['messages'][1]['content']
-            answer = dataset[idx]['messages'][2]['content']
-            response = responses[i]
-            sep = "--------------------------------------------------"
+        f.write(f"Results: {results}\n")
+        for x in zip(prompts, references, predictions):
+            f.write("------------------------------------------\n\n")
+            f.write(f"Prompt:\n{x[0]}\n")
+            f.write(f"Reference:\n{x[1]}\n")
+            f.write(f"Prediction:\n{x[2]}\n\n")
 
-            f.write(f"{sep+sep}\nPrompt:\n{prompt}\n{sep}\nQuestion:\n{question}\n{sep}\nAnswer:\n{answer}\n{sep}\nResponse:\n{response}\n")
+        
 
 def train(args, train_args):
-    ############################    Tokenizer    ############################
-
-    tokenizer = AutoTokenizer.from_pretrained(args.model_id, use_fast=True, chat_template=get_template(args))
-    tokenizer.pad_token = tokenizer.eos_token
-
-    ############################    Dataset    ############################
-
-    train_dataset = get_dataset(args)
-    test_dataset = get_dataset(args, split="test")
-    
-    train_dataset = train_dataset.map(lambda x: {"text": tokenizer.apply_chat_template(x["messages"], tokenize=False)}, remove_columns=["messages"])
-    test_dataset = test_dataset.map(lambda x: {"text": tokenizer.apply_chat_template(x["messages"], tokenize=False)}, remove_columns=["messages"])
-    log_samples(train_args, train_dataset)
-
-    ############################    Quantization    ############################
-
-    torch_dtype = torch.bfloat16
-    quant_storage_dtype = torch.bfloat16
-
-    quantization_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_use_double_quant=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch_dtype,
-        bnb_4bit_quant_storage=quant_storage_dtype,
-    )
-
-    ############################    Model    ############################
-
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model_id,
-        quantization_config=quantization_config,
-        attn_implementation="flash_attention_2",  # "sdpa"
-        torch_dtype=quant_storage_dtype,
-        device_map="auto",
-        use_cache=False if train_args.gradient_checkpointing else True,
-    )
-
-    if train_args.gradient_checkpointing:
-        model.gradient_checkpointing_enable()
-
-    ############################    PEFT    ############################
-
-    peft_config = LoraConfig(
-        lora_alpha=8,
-        lora_dropout=0.05,
-        r=16,
-        bias="none",
-        target_modules="all-linear",
-        task_type="CAUSAL_LM",
-        modules_to_save=["lm_head", "embed_tokens"] if args.is_instruct else None,
-    )
-
-    ############################    SFTTrainer    ############################
-
-    trainer = SFTTrainer(
-        model=model,
-        args=train_args,
-        train_dataset=train_dataset,
-        dataset_text_field="text",
-        eval_dataset=test_dataset,
-        peft_config=peft_config,
-        max_seq_length=args.max_seq_length,
-        tokenizer=tokenizer,
-        packing=True,
-        dataset_kwargs={
-            "add_special_tokens": False,
-            "append_concat_token": False,
-        },
-    )
-    if trainer.accelerator.is_main_process:
-        trainer.model.print_trainable_parameters()
-
-    ############################    Train    ############################
-
-    logger.info("Starting training ...")
-
-    os.makedirs(os.path.join(train_args.output_dir, "checkpoints"))
-    checkpoint = None
-    if train_args.resume_from_checkpoint is not None:
-        checkpoint = train_args.resume_from_checkpoint
-    trainer.train(resume_from_checkpoint=checkpoint)
-
-    ############################    Save Model    ############################
-
-    if trainer.is_fsdp_enabled:
-        trainer.accelerator.state.fsdp_plugin.set_state_dict_type("FULL_STATE_DICT")
-    trainer.save_model()
+    raise NotImplementedError("Training is not yet implemented for gigaword.")
 
 if __name__ == "__main__":
     hf_login()

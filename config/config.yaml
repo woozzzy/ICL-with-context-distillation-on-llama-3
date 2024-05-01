@@ -2,24 +2,24 @@
 
 ## General Params
 mode: 'test' # 'train', 'test'
-icl: 'extract'
+icl: 'summarize' # 'summarize', 'extract', 'qa'
 distill: false
 max_seq_len: 2048
 
 ## Model Params
-model_id: 'meta-llama/Meta-Llama-3-8B-Instruct' # Hugging Face model id
-model_path: 'models/Meta-Llama-3-8B-Instruct'
+model_id: 'meta-llama/Meta-Llama-3-8B' # Hugging Face model id
+model_path: 'models/Meta-Llama-3-8B'
 use_local_model: true
 upload_model: false
 is_peft: false
 is_instruct: false
 
 ## Dataset Params
-dataset_id: 'HuggingFaceH4/no_robots'
+dataset_id: 'gigaword'
 train_path: 'data/train_data.json'
 test_path: 'data/test_data.json'
 use_local_dataset: false
-num_workers: 0
+num_workers: 4
 
 ############################    Training Parameters    ############################
 

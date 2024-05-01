@@ -63,10 +63,10 @@ set -- "${POSITIONAL_ARGS[@]}"
 RUN_COMMAND=(python main.py --config $CONFIG)
 
 if [ -n "$CLEAN" ]; then
-  rm -rf output/*/run_*
-  rm data/*.json
-  rm output/job_*.out
   rm "$BATCH_FILE"
+  rm output/job_*.out
+  rm -rf output/*/run_*
+  rmdir output/*
   echo "Cleaned output directory."
 fi
 
