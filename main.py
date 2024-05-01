@@ -3,7 +3,7 @@ import random
 import torch
 from datasets import load_dataset
 from peft import LoraConfig, AutoPeftModelForCausalLM
-from pprint import pformat
+from pprint import pformat, pprint
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -74,13 +74,22 @@ def test(args, training_args):
 
     ############################    Model/Tokenizer    ############################
 
-    model = AutoPeftModelForCausalLM.from_pretrained(
-        args.model_path,
-        torch_dtype=torch.bfloat16,  # torch.float16
-        quantization_config={"load_in_4bit": True},
-        device_map="auto",
-    )
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
+    if args.use_local_model:
+        model = AutoPeftModelForCausalLM.from_pretrained(
+            args.model_path,
+            torch_dtype=torch.bfloat16,
+            quantization_config={"load_in_4bit": True},
+            device_map="auto",
+        )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model_id,
+            attn_implementation="flash_attention_2",  # "sdpa"
+            torch_dtype=torch.bfloat16,
+            use_cache=False if training_args.gradient_checkpointing else True,
+        )
+
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path if args.use_local_model else args.model_id)
 
     ############################    Generate    ############################
 
@@ -115,13 +124,13 @@ def incontextlearning_extract(args, training_args):
     dataset = dataset.filter(lambda x: x["category"] == "Extract")
 
     random_indices = random.sample(range(len(dataset)), 10)
-    examples = dataset[random_indices]["messages"]
-    dataset = dataset.select((i for i in range(len(dataset)) if i not in set(random_indices)))
+    examples = dataset[random_indices]["messages"][:2]
+    dataset = dataset.select(([i for i in range(len(dataset)) if i not in set(random_indices)]))
 
     prompt = """You are Llama, an AI assistant created by deep learning researchers to be helpful and honest. Your knowledge spans a wide range of topics, allowing you to engage in substantive conversations and provide analysis on complex subjects.\n\nExamples start:"""
 
-    for i in range(len(examples)):
-        prompt += f"\n\n**Prompt:**\n{examples[i]['content']}\n**Response:**\n{examples[i+1]['content']}"
+    for i in range(len(examples) - 1):
+        prompt += f"\n\n**Prompt:**\n{examples[i][0]['content']}\n**Response:**\n{examples[i+1][1]['content']}"
         i += 1
         if i < len(examples) - 1:
             prompt += "\n\n---"
@@ -147,13 +156,22 @@ def incontextlearning_extract(args, training_args):
 
     ############################    Model/Tokenizer    ############################
 
-    model = AutoPeftModelForCausalLM.from_pretrained(
-        args.model_path,
-        torch_dtype=torch.bfloat16,
-        quantization_config={"load_in_4bit": True},
-        device_map="auto",
-    )
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
+    if args.use_local_model:
+        model = AutoPeftModelForCausalLM.from_pretrained(
+            args.model_path,
+            torch_dtype=torch.bfloat16,
+            quantization_config={"load_in_4bit": True},
+            device_map="auto",
+        )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model_id,
+            attn_implementation="flash_attention_2",  # "sdpa"
+            torch_dtype=torch.bfloat16,
+            use_cache=False if training_args.gradient_checkpointing else True,
+        )
+
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path if args.use_local_model else args.model_id)
 
     ############################    Generate    ############################
 
