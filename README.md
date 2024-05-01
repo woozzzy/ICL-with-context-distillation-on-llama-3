@@ -46,3 +46,48 @@ Options:
 -s, --slurm Dispatch Slurm job. For use on PACE cluster only.
 -h, --help Show this help message.
 ```
+
+## Config File:
+
+#### Script Parameters:
+
+-   `mode`: str - Determines the mode of the script. Options: `'prep_data'`, `'train'`, `'test'`, `'incontextlearning_extract'`
+-   `model_id`: str - Model ID for HuggingFace model. Ex: `'meta-llama/Meta-Llama-3-8b'`
+-   `model_path`: str - Path to local model. Ex: `'./output/meta-llama-3-8b-qlora_no_robots/run_1/checkpoints'`
+-   `dataset_id`: str - Dataset ID for HuggingFace dataset. Ex: 'HuggingFaceH4/no_robots'
+-   `train_dataset_path`: str - Path to local preprocessed training dataset. Ex: `'./data/train_dataset.json'`
+-   `test_dataset_path`: str - Path to local preprocessed test dataset. Ex: `'./data/test_dataset.json'`
+-   `preprocessed`: bool - Whether to use local preprocessed data.
+-   `max_seq_len`: int - Maximum sequence length for model. Ex: `2048`
+-   `use_local_model`: bool - Whether to use local model.
+-   `upload_model`: bool - Whether to upload model to HuggingFace.
+-   `distill`: bool - Whether to use context distillation.
+-   `use_instruct_template`: bool - Whether to use instruction template.
+
+#### Training Parameters:
+
+-   `output_dir`: str - Output directory for training. Will be set automatically.
+-   `learning_rate`: float - Learning rate for training. Ex: `1e-5`
+-   `lr_scheduler_type`: str - Learning rate scheduler type. Options: `'linear'`, `'cosine'`, `'cosine_with_restarts'`, `'polynomial'`, `'constant'`
+-   `num_train_epochs`: int - Number of training epochs. Ex: `3`
+-   `per_device_train_batch_size`: int - Batch size per device for training. Ex: `4`
+-   `per_device_eval_batch_size`: int - Batch size per device for evaluation. Ex: `4`
+-   `gradient_checkpointing`: bool - Whether to use gradient checkpointing.
+-   `gradient_accumulation_steps`: int - Number of gradient accumulation steps. Ex: `1`
+-   `optim`: str - Optimizer for training. Use `'adamw_torch'`
+-   `weight_decay`: float - Weight decay for training. Ex: `0.01`
+-   `max_grad_norm`: float - Maximum gradient norm for training. Ex: `1.0`
+-   `warmup_ratio`: float - Warmup ratio for training. Ex: `0.1`
+-   `logging_steps`: int - Logging steps for training. Ex: `100`
+-   `save_strategy`: str - Save strategy for training. Use `'epoch'`
+-   `evaluation_strategy`: str - Evaluation strategy for training. Use `'epoch'`
+-   `bf16`: bool - Whether to use bfloat16 precision.
+-   `tf32`: bool - Whether to use tf32 precision.
+-   `seed`: int - Random seed for training. Ex: `42`
+-   `disable_tqdm`: bool - Whether to disable tqdm.
+-   `load_best_model_at_end`: bool - Whether to load best model at end of training.
+-   `fsdp`: str - Default: `'full_shard_auto_warp offload'`; Remove `offload` if enough GPU memory
+-   `fsdp_config`:
+    -   `backward_prefetch`: str - Default: `'backward_pre'`
+    -   `forward_prefetch`: str - Default: `'false'`
+    -   `use_orig_params`: str - Default: `'false'`
