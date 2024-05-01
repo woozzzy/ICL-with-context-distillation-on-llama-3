@@ -187,13 +187,13 @@ def train(args, training_args):
 
     train_dataset = load_dataset(
         "json",
-        data_files="data/train_dataset.json",
+        data_files=training_args.train_dataset_path,
         split="train",
         num_proc=args.num_workers,
     )
     test_dataset = load_dataset(
         "json",
-        data_files="data/test_dataset.json",
+        data_files=training_args.test_dataset_path,
         split="train",
         num_proc=args.num_workers,
     )

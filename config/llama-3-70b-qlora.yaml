@@ -10,6 +10,8 @@ model_path: './output/meta-llama-3-70b-qlora_no_robots/run_1/checkpoints'
 
 ## HF Dataset ID and Local Path
 dataset_id: 'HuggingFaceH4/no_robots'
+train_dataset_path: './data/incontext_dataset.json'
+test_dataset_path: './data/incontext_dataset.json'
 preprocessed: false
 num_workers: 4
 
