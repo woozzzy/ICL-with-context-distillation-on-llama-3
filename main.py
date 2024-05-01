@@ -310,6 +310,8 @@ if __name__ == "__main__":
         test(args, training_args)
     elif args.mode == "train":
         train(args, training_args)
+    elif args.mode == "incontextlearning_extract":
+        incontextlearning_extract(args, training_args)
     else:
         logger.error(f"Unknown mode: {args.mode}")
         raise ValueError(f"Unknown mode: {args.mode}")

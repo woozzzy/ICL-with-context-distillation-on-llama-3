@@ -1,8 +1,8 @@
 ############################################
 ## Script Parameters
 ############################################
-## Mode: prep_data, train, test
-mode: 'train'
+## Mode: prep_data, train, test, incontextlearning_extract
+mode: 'incontextlearning_extract'
 
 ## HF Model ID and Local Path
 model_id: 'meta-llama/Meta-Llama-3-70B' # Hugging Face model id
