@@ -38,7 +38,7 @@ pip install flash-attn --no-build-isolation
 ```bash
 Usage: run.sh [OPTIONS]
 Options:
--c, --config <config> Path to the config file. Default: config/llama-3-8b-qlora.yaml. Default: config/llama-3-8b-qlora.yaml.
+-c, --config <config> Path to the config file. Default: config/llama-3-8b-qlora.yaml.
 -f, --fsdp Use FSDP for training.
 -t, --torchrun Use torchrun for training.
 --nproc_per_node <num> Number of GPUs to use with torchrun. Default: 4.
