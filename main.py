@@ -120,8 +120,11 @@ def incontextlearning_extract(args, training_args):
 
     prompt = """You are Llama, an AI assistant created by deep learning researchers to be helpful and honest. Your knowledge spans a wide range of topics, allowing you to engage in substantive conversations and provide analysis on complex subjects.\n\nExamples start:"""
 
-    for i in range(len(examples), step=2):
+    for i in range(len(examples)):
         prompt += f"\n\n**Prompt:**\n{examples[i]['content']}\n**Response:**\n{examples[i+1]['content']}"
+        i += 1
+        if i < len(examples) - 1:
+            prompt += "\n\n---"
 
     prompt = prompt + "\n\nExamples end."
 
