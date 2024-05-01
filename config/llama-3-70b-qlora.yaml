@@ -1,8 +1,8 @@
 ############################################
 ## Script Parameters
 ############################################
-## Mode: prep_data, train, test
-mode: 'train'
+## Mode: prep_data, train, test, incontextlearning_extract
+mode: 'incontextlearning_extract'
 
 ## HF Model ID and Local Path
 model_id: 'meta-llama/Meta-Llama-3-70B' # Hugging Face model id
@@ -10,6 +10,8 @@ model_path: './output/meta-llama-3-70b-qlora_no_robots/run_1/checkpoints'
 
 ## HF Dataset ID and Local Path
 dataset_id: 'HuggingFaceH4/no_robots'
+train_dataset_path: './data/incontext_dataset.json'
+test_dataset_path: './data/incontext_dataset.json'
 preprocessed: false
 num_workers: 4
 
