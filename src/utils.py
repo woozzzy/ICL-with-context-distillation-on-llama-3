@@ -19,6 +19,7 @@ class ScriptArgs:
     num_workers: int = field(default=4, metadata={"help": "Number of workers for DataLoader"})
     max_seq_len: int = field(default=1024, metadata={"help": "Max sequence length"})
     use_local_model: bool = field(default=False, metadata={"help": "Use local model"})
+    is_peft: bool = field(default=False, metadata={"help": "Use PEFT"})
     upload_model: bool = field(default=False, metadata={"help": "Upload model to HF"})
     distill: bool = field(default=False, metadata={"help": "Distill model"})
     use_instruct_template: bool = field(default=False, metadata={"help": "Use instruct template"})

@@ -18,7 +18,7 @@ num_workers: 4
 max_seq_len: 2048 # 3072
 
 ## Boolean Flags
-use_local_model: false
+use_local_model: true
 is_peft: false
 upload_model: false
 distill: false
