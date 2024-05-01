@@ -162,3 +162,4 @@ cython_debug/
 data/*.json
 output/*
 models/*
+!models/*.sh

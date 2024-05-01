@@ -1,9 +1,8 @@
 #!/bin/bash
 POSITIONAL_ARGS=()
 CONFIG="config/config.yaml"
-NPROC_PER_NODE=4
+NPROC_PER_NODE=1
 BATCH_FILE="output/slurm_job.sh"
-
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -29,6 +28,10 @@ while [[ $# -gt 0 ]]; do
       USE_SLURM=1
       shift 
       ;;
+    --gen-only)
+      GEN_ONLY=1
+      shift 
+      ;;
     --clean)
       CLEAN=1
       shift 
@@ -37,13 +40,14 @@ while [[ $# -gt 0 ]]; do
       echo """
 Usage: run.sh [OPTIONS]
 Options:
+  -h, --help                  Show this help message.
   -c, --config <config>       Path to the config file. Default: config/llama-3-8b-qlora.yaml.
   -f, --fsdp                  Use FSDP for training.
   -t, --torchrun              Use torchrun for training. Specify the number of GPUs with --nproc_per_node.
-  -n. --nproc_per_node <num>  Number of GPUs to use with torchrun. Default: 4.
-  --clean                     Clean the output directory. Does not run the training.
+  -n. --nproc_per_node <num>  Number of GPUs to use with torchrun. Default: 1.
   -s, --slurm                 Dispatch Slurm job. For use on PACE cluster only.
-  -h, --help                  Show this help message.
+  --gen-only                  Only generate slurm_job.sh file for manual dispatching.
+  --clean                     Clean the output directory. Does not run the training.
 """
       exit 0
       ;;
@@ -63,10 +67,11 @@ set -- "${POSITIONAL_ARGS[@]}"
 RUN_COMMAND=(python main.py --config $CONFIG)
 
 if [ -n "$CLEAN" ]; then
-  rm -rf output/*/run_*
-  rm data/*.json
-  rm output/job_*.out
   rm "$BATCH_FILE"
+  rm output/job_*.out
+  rm models/job_*.out
+  rm -rf output/*/run_*
+  rmdir output/*
   echo "Cleaned output directory."
 fi
 
@@ -88,10 +93,10 @@ if [ -n "$USE_SLURM" ]; then
 
   cat <<EOT > "$BATCH_FILE"
 #!/bin/bash
-#SBATCH --job-name=job_llama_icl
-#SBATCH --gres=gpu:H100:1
-#SBATCH --time=01:00:00
-#SBATCH --ntasks-per-node=4
+#SBATCH --job-name=job_llama-3-icl
+#SBATCH --gres=gpu:H100:${NPROC_PER_NODE}
+#SBATCH --time=02:30:00
+#SBATCH --ntasks-per-node=8
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=16GB
 #SBATCH --output=output/job_%j.out
@@ -102,7 +107,12 @@ echo "${RUN_COMMAND[@]}"
 ${RUN_COMMAND[@]}
 EOT
 
-  sbatch "$BATCH_FILE"
+  
+  if [ -n "$GEN_ONLY" ]; then
+    echo "Generated Slurm job file: $BATCH_FILE"
+  else
+    sbatch "$BATCH_FILE"
+  fi
   exit 0
 else 
   ${RUN_COMMAND[@]}

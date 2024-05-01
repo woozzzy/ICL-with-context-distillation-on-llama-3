@@ -1,3 +1,5 @@
+import os
+import json
 import random
 from datasets import load_dataset
 from src.utils import (
@@ -5,73 +7,71 @@ from src.utils import (
 )
 
 
-def get_dataset(args, split="train", use_icl=True):
+def get_dataset(args, train_args, split="train", use_icl=True):
     logger.info("Loading data ...")
     data_path = args.test_path if split == "test" else args.train_path
 
+    ############################    Load Dataset from Local/Remote    ############################
     if args.use_local_dataset:
         dataset = load_dataset("json", data_files=data_path, num_proc=args.num_workers, split=split)
     else:
         dataset = load_dataset(args.dataset_id, num_proc=args.num_workers, split=split)
+        dataset = dataset.shuffle()
+        dataset = dataset.select(range(1000))
 
         ############################    Base System Prompt    ############################
         
-        prompt = """You are Llama, an AI assistant created by deep learning researchers to be helpful and honest. Your knowledge spans a wide range of topics, allowing you to engage in substantive conversations and provide analysis on complex subjects.\n"""
-
+        base = """You are LLAMA, a powerful AI assistant created by deep learning researchers to provide succinct and meaningful summaries on a variety of texts. Your expansive knowledge base allows you to engage in critical analysis of these texts to identify the most significant portions. In this task, you will help summarize news articles into a single concise headline. Here are a few examples on how to transform a detailed document into a brief summary:\n\n"""
+        context = ""
+        instruction = "Write a concise summary/headline for the provided document."
+        
         ############################    In-Context Learning    ############################
         
         logger.info(f"Applying In-Context Learning for Task: {args.icl}")
 
         ## Filter dataset to match task
-        if args.icl == 'extract':
-            dataset = dataset.filter(lambda x: x["category"] == "Extract")
-        elif args.icl == 'summarize':
-            dataset = dataset.filter(lambda x: x["category"] == "Summarize")
-        elif args.icl == 'qa':
-            dataset = dataset.filter(lambda x: x["category"] == "Open QA")
-
+        if args.icl != 'summarize':
+            raise ValueError("Gigaword only support summarization tasks")
+        
         ## Construct and Add Context
         if use_icl:
             ## Sample Examples from Dataset
-            example_idx = random.sample(range(len(dataset)), 2)
-            examples = [dataset[i]["messages"][:2] for i in example_idx]
+            example_idx = random.sample(range(len(dataset)), 4)
+            examples = dataset.select(example_idx)
             dataset = dataset.select(([i for i in range(len(dataset)) if i not in set(example_idx)]))
-            
-            ## TODO: Implement context distillation
-        
-            ## Add Context to Prompt
-            for example in examples:
-                for message in example:
-                    if message["role"] == "system":
-                        prompt += f"{message['content']}\n"
-                    elif message["role"] == "user":
-                        prompt += f"Human: {message['content']}\n"
-                    elif message["role"] == "assistant":
-                        prompt += f"Assistant: {message['content']}"
-
-            logger.debug(f"Length of prompt with context: {len(prompt)}")
                     
-        ############################    Add Prompt to Data    ############################
+            ## Add Context to Prompt
+            for ex in examples:
+                context += (f"Human: {instruction}\n")
+                context += (f"Document: {ex['document']}\n")
+                context += (f"Summary: {ex['summary']}\n\n")
 
-        def _add_prompt(sample):
-            if sample["messages"][0]["role"] == "system":
-                return sample
-            else:
-                sample["messages"] = [{"role": "system", "content": prompt}] + sample["messages"]
-                return sample
+        ############################    Convert to Chat Format    ############################
 
-        columns_to_remove = list(dataset.features)
-        columns_to_remove.remove("messages")
-        dataset = dataset.map(_add_prompt, remove_columns=columns_to_remove, batched=False)
+        sys_prompt = base + context
 
-        ############################    Filter Conversations with Wrong # of Turns    ############################
-
-        dataset = dataset.filter(lambda x: len(x["messages"][1:]) % 2 == 0)
+        def _format(sample):
+            task = {'role': 'user', 'content': f"{instruction}\nDocument: {sample['document']}"}
+            reference = {"role": "assistant", "content": f"{sample['summary']}"}
+            sample['document'] = [{'role': 'system', 'content': sys_prompt}, task, reference]
+            return sample
         
+        columns_to_remove = list(dataset.features)
+        columns_to_remove.remove('document')
+        dataset = dataset.map(_format, remove_columns=columns_to_remove, batched=False)
+        dataset = dataset.rename_column('document', 'messages')
+
+        ############################    Filter Conversations with Odd # of Turns    ############################
+        
+        dataset = dataset.filter(lambda x: len(x["messages"][1:]) % 2 == 0)
+
         ############################    Save to Disk    ############################
 
+        if os.path.exists(data_path):
+            os.remove(data_path)
+        
         dataset.to_json(data_path, orient="records", force_ascii=False)
-
+    
     return dataset
 
 def get_template(args):
@@ -88,11 +88,10 @@ def get_template(args):
             "{% elif message['role'] == 'user' %}"
             "{{ '\n\nHuman: ' + message['content'] +  eos_token }}"
             "{% elif message['role'] == 'assistant' %}"
-            "{{ '\n\nAssistant: '  + message['content'] +  eos_token  }}"
+            "{{ '\n\Summary: '  + message['content'] +  eos_token  }}"
             "{% endif %}"
             "{% endfor %}"
             "{% if add_generation_prompt %}"
-            "{{ '\n\nAssistant: ' }}"
+            "{{ '\n\Summary: ' }}"
             "{% endif %}"
         )
-

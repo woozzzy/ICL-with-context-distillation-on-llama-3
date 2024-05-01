@@ -17,8 +17,7 @@ CS 4644 Final Project
 conda create -n llama python=3.11 \
 conda activate llama \
 pip install -U torch torchvision torchaudio \
-pip install -U transformers datasets accelerate evaluate bitsandbytes huggingface_hub trl peft \
-pip install python-dotenv pandas \
+pip install -U transformers datasets accelerate evaluate bitsandbytes huggingface_hub trl peft rouge-score absl-py nltk python-dotenv pandas \
 conda install -c conda-forge cudatoolkit-dev -y \
 pip install flash-attn --no-build-isolation
 ```
@@ -38,13 +37,14 @@ pip install flash-attn --no-build-isolation
 ```
 Usage: run.sh [OPTIONS]
 Options:
+  -h, --help                  Show this help message.
   -c, --config <config>       Path to the config file. Default: config/llama-3-8b-qlora.yaml.
   -f, --fsdp                  Use FSDP for training.
   -t, --torchrun              Use torchrun for training. Specify the number of GPUs with --nproc_per_node.
   -n. --nproc_per_node <num>  Number of GPUs to use with torchrun. Default: 4.
-  --clean                     Clean the output directory. Does not run the training.
   -s, --slurm                 Dispatch Slurm job. For use on PACE cluster only.
-  -h, --help                  Show this help message.
+  --gen-only                  Only generate slurm_job.sh file for manual dispatching.
+  --clean                     Clean the output directory. Does not run the training.
 ```
 
 ## Config File:
@@ -52,7 +52,7 @@ Options:
 #### Script Parameters:
 
 -   `mode`: str - Determines the mode of the script. Options: `'train'`, `'test'`
--   `icl`: str - Specify which task to use ICL for. Options: `'none'`, `'extract'`
+-   `icl`: str - Specify which task to use ICL for. Only `'summarize'` implemented
 -   `distill`: bool - Whether to use context distillation.
 -   `max_seq_len`: int - Maximum sequence length for model. Ex: `2048`
 -   `model_id`: str - Model ID for HuggingFace model. Ex: `'meta-llama/Meta-Llama-3-8b'`

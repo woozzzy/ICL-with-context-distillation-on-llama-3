@@ -1,13 +1,13 @@
-import random
+import logging
 import os
+import random
 import shutil
 from dotenv import load_dotenv
 from huggingface_hub import login
-from logging import getLogger, FileHandler, StreamHandler, Formatter, DEBUG
 from time import strftime
 
-logger = getLogger(__name__)
-logger.setLevel(DEBUG)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 def hf_login():
@@ -39,9 +39,9 @@ def get_output_path(args):
     os.makedirs(output_path)
 
     ## Logger Setup
-    file_handler = FileHandler(os.path.join(output_path, f"{strftime('%Y-%m-%d_%H:%M:%S')}.log"))
-    console_handler = StreamHandler()
-    formatter = Formatter("%(asctime)s %(levelname)s: %(message)s")
+    file_handler = logging.FileHandler(os.path.join(output_path, f"{strftime('%Y-%m-%d_%H:%M:%S')}.log"))
+    console_handler = logging.StreamHandler()
+    formatter = logging.Formatter("%(asctime)s %(levelname)s: %(message)s")
 
     file_handler.setFormatter(formatter)
     console_handler.setFormatter(formatter)
