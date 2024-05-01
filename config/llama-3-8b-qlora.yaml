@@ -1,6 +1,5 @@
-############################################
-## Script Parameters
-############################################
+############################    Script Parameters    ############################
+
 ## Mode: prep_data, train, test, incontextlearning_extract
 mode: 'incontextlearning_extract'
 
@@ -24,14 +23,10 @@ upload_model: false
 distill: false
 use_instruct_template: false
 
-############################################
-## Training Parameters
-############################################
+############################    Training Parameters    ############################
+
 ## Temporary Output Directory for Model Checkpoints
 output_dir: './'
-
-## Report Metrics to Tensorboard
-report_to: 'tensorboard'
 
 ## Learning Rate and Scheduler
 learning_rate: 0.0002
@@ -50,9 +45,9 @@ gradient_accumulation_steps: 2 # number of steps before performing a backward/up
 
 ## Optimizer
 optim: adamw_torch
+weight_decay: 0.01
 max_grad_norm: 0.3
 warmup_ratio: 0.03
-weight_decay: 0.01
 
 ## Logging and Saving
 logging_steps: 10 # log every 10 steps
@@ -63,14 +58,14 @@ evaluation_strategy: epoch # evaluate every epoch
 bf16: true
 tf32: true
 
+## Miscellaneous
+seed: 42
+disable_tqdm: False
+load_best_model_at_end: True
+
 ## FSDP parameters: https://huggingface.co/docs/transformers/main/en/fsdp
 fsdp: 'full_shard auto_wrap offload' # remove offload if enough GPU memory
 fsdp_config:
     backward_prefetch: 'backward_pre'
     forward_prefetch: 'false'
     use_orig_params: 'false'
-
-## Miscellaneous
-seed: 42
-disable_tqdm: False
-load_best_model_at_end: True

@@ -34,7 +34,7 @@ while [[ $# -gt 0 ]]; do
     -h|--help)
       echo "Usage: run.sh [OPTIONS]"
       echo "Options:"
-      echo "  -c, --config <config>  Path to the config file. Default: config/llama-3-8b-qlora.yaml. Default: config/llama-3-8b-qlora.yaml."
+      echo "  -c, --config <config>  Path to the config file. Default: config/llama-3-8b-qlora.yaml."
       echo "  -f, --fsdp             Use FSDP for training."
       echo "  -t, --torchrun         Use torchrun for training. Specify the number of GPUs with --nproc_per_node."
       echo "  --nproc_per_node <num> Number of GPUs to use with torchrun. Default: 4."
