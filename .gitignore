@@ -162,4 +162,4 @@ cython_debug/
 data/*.json
 output/*
 models/*
-!models/slurm_download.sh
+!models/*.sh

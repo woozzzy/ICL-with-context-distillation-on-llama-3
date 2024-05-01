@@ -22,8 +22,9 @@ def test(args, train_args):
     ############################    Dataset    ############################
 
     dataset = get_dataset(args, train_args, split="train")
-    sample_idx = random.sample(range(len(dataset)), 10)
-    samples = dataset[sample_idx]["document"]
+    sample_idx = random.sample(range(len(dataset)), 3)
+    dataset = dataset.select(sample_idx)
+    samples = [x[:2] for x in dataset['messages']]
 
     ############################    Model    ############################
 
@@ -46,21 +47,27 @@ def test(args, train_args):
 
     ############################    Tokenizer    ############################
 
-    tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True, padding_side='left', chat_template=get_template(args))
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_id, 
+        use_fast=True, 
+        padding_side='left', 
+        chat_template=get_template(args)
+    )
     tokenizer.pad_token = tokenizer.eos_token
 
-    input_ids = tokenizer(
-        samples, 
+    input_ids = tokenizer.apply_chat_template(
+        samples,
         max_length=args.max_seq_len,
         padding=True,
         truncation=True,
+        add_generation_prompt=True,
         return_tensors="pt"
-    ).input_ids.to(model.device)
+    ).to(model.device)
 
 
     ############################    Inference    ############################
     
-    logger.info("Beginning generation.")
+    logger.info("Beginning generation ...")
 
     outputs = model.generate(
         input_ids,
@@ -70,16 +77,24 @@ def test(args, train_args):
         temperature=0.6,
         top_p=0.9,
     )
+    outputs = [x[input_ids.shape[-1]:] for x in outputs]
     logger.info("Finished generation.")
 
-    predictions = tokenizer.batch_decode(outputs, skip_special_tokens=(not args.is_instruct))
-    
-    prompts, references = [], []
-    for sample in dataset.select(sample_idx):
-        prompts.append(sample['document'])
-        references.append(sample['summary'])
-
     ############################    Evaluation    ############################
+
+    logger.info("Constructing outputs for evaluation ...")
+
+
+    prompts, references = [], []
+    for sample in dataset['messages']:
+        prompts.append(sample[0]['content'] + sample[1]['content'])
+        references.append(sample[2]['content'])
+
+    predictions = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+
+    pprint(f"Prompts: {len(prompts)}")
+    pprint(f"References: {len(references)}")
+    pprint(f"Predictions: {len(predictions)}")
 
     rouge = evaluate.load('rouge')
     results = rouge.compute(predictions=predictions, references=references)
@@ -92,12 +107,11 @@ def test(args, train_args):
         f.write(f"Results: {results}\n")
         for x in zip(prompts, references, predictions):
             f.write("------------------------------------------\n\n")
-            f.write(f"Prompt:\n{x[0]}\n")
-            f.write(f"Reference:\n{x[1]}\n")
-            f.write(f"Prediction:\n{x[2]}\n\n")
+            f.write(f"Prompt:\n{x[0]}\n\n")
+            f.write(f"Reference:\n{x[1]}\n\n")
+            f.write(f"Prediction:\n{x[2]}\n\n\n")
 
-        
-
+    
 def train(args, train_args):
     raise NotImplementedError("Training is not yet implemented for gigaword.")
 
@@ -117,16 +131,15 @@ if __name__ == "__main__":
     if train_args.gradient_checkpointing:
         train_args.gradient_checkpointing_kwargs = {"use_reentrant": False}
 
-    logger.debug(f"Arguments: \n{pformat(args.__dict__)}\n")
-    logger.debug(f"Training Arguments: \n{pformat(train_args.__dict__)}\n")
-
     ############################    Login to HF and Run Mode    ############################
 
     logger.info(f"Running Mode: {args.mode}")
+    logger.debug(f"Arguments: \n{pformat(args.__dict__)}\n")
 
     if args.mode == "test":
         test(args, train_args)
     elif args.mode == "train":
+        logger.debug(f"Training Arguments: \n{pformat(train_args.__dict__)}\n")
         train(args, train_args)
     else:
         logger.error(f"Unknown mode: {args.mode}")

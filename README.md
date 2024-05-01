@@ -37,13 +37,14 @@ pip install flash-attn --no-build-isolation
 ```
 Usage: run.sh [OPTIONS]
 Options:
+  -h, --help                  Show this help message.
   -c, --config <config>       Path to the config file. Default: config/llama-3-8b-qlora.yaml.
   -f, --fsdp                  Use FSDP for training.
   -t, --torchrun              Use torchrun for training. Specify the number of GPUs with --nproc_per_node.
   -n. --nproc_per_node <num>  Number of GPUs to use with torchrun. Default: 4.
-  --clean                     Clean the output directory. Does not run the training.
   -s, --slurm                 Dispatch Slurm job. For use on PACE cluster only.
-  -h, --help                  Show this help message.
+  --gen-only                  Only generate slurm_job.sh file for manual dispatching.
+  --clean                     Clean the output directory. Does not run the training.
 ```
 
 ## Config File:
@@ -62,6 +63,7 @@ Options:
 -   `dataset_id`: str - Dataset ID for HuggingFace dataset. Ex: 'HuggingFaceH4/no_robots'
 -   `train_path`: str - Path to local preprocessed training dataset. Ex: `'data/train_data.json'`
 -   `test_path`: str - Path to local preprocessed test dataset. Ex: `'data/test_data.json'`
+-   `references_path`: str - Path to dataset made of just the references column. Ex: `'data/references.json'`
 -   `use_local_dataset`: bool - Whether to use local preprocessed data.
 
 #### Training Parameters:

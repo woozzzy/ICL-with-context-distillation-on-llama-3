@@ -17,5 +17,6 @@ class ScriptArgs:
     dataset_id: str = field(default="HuggingFaceH4/no_robots", metadata={"help": "HF Dataset ID"})
     train_path: str = field(default="data/train_data.json", metadata={"help": "Path to train data"})
     test_path: str = field(default="data/test_data.json", metadata={"help": "Path to test data"})
+    references_path: str = field(default="data/references.json", metadata={"help": "Path to references seperated from dataset"})
     use_local_dataset: bool = field(default=False, metadata={"help": "Use preprocessed data"})
     num_workers: int = field(default=0, metadata={"help": "Number of workers for DataLoader"})
