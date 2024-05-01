@@ -1,32 +1,30 @@
 ############################    Script Parameters    ############################
 
-## Mode: prep_data, train, test, incontextlearning_extract
-mode: 'incontextlearning_extract'
-
-## HF Model ID and Local Path
-model_id: 'meta-llama/Meta-Llama-3-8B' # Hugging Face model id
-model_path: './output/meta-llama-3-8b-qlora_no_robots/run_1/checkpoints'
-
-## HF Dataset ID and Local Path
-dataset_id: 'HuggingFaceH4/no_robots'
-train_dataset_path: './data/incontext_dataset.json'
-test_dataset_path: './data/incontext_dataset.json'
-preprocessed: true
-num_workers: 4
-
-## Max Sequence Length for Model and Packing of Dataset
-max_seq_len: 2048 # 3072
-
-## Boolean Flags
-use_local_model: false
-upload_model: false
+## General Params
+mode: 'test' # 'train', 'test'
+icl: 'extract'
 distill: false
-use_instruct_template: false
+max_seq_len: 2048
+
+## Model Params
+model_id: 'meta-llama/Meta-Llama-3-8B-Instruct' # Hugging Face model id
+model_path: 'models/Meta-Llama-3-8B-Instruct'
+use_local_model: true
+upload_model: false
+is_peft: false
+is_instruct: false
+
+## Dataset Params
+dataset_id: 'HuggingFaceH4/no_robots'
+train_path: 'data/train_data.json'
+test_path: 'data/test_data.json'
+use_local_dataset: false
+num_workers: 0
 
 ############################    Training Parameters    ############################
 
 ## Temporary Output Directory for Model Checkpoints
-output_dir: './'
+output_dir: ''
 
 ## Learning Rate and Scheduler
 learning_rate: 0.0002
@@ -59,7 +57,7 @@ bf16: true
 tf32: true
 
 ## Miscellaneous
-seed: 42
+seed: -1 # -1 for random
 disable_tqdm: False
 load_best_model_at_end: True
 

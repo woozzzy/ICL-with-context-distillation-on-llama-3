@@ -35,34 +35,35 @@ pip install flash-attn --no-build-isolation
 
 #### Using `run.sh` script
 
-```bash
+```
 Usage: run.sh [OPTIONS]
 Options:
--c, --config <config> Path to the config file. Default: config/llama-3-8b-qlora.yaml.
--f, --fsdp Use FSDP for training.
--t, --torchrun Use torchrun for training.
---nproc_per_node <num> Number of GPUs to use with torchrun. Default: 4.
--c, --clean Clean the output directory. Does not run the training.
--s, --slurm Dispatch Slurm job. For use on PACE cluster only.
--h, --help Show this help message.
+  -c, --config <config>       Path to the config file. Default: config/llama-3-8b-qlora.yaml.
+  -f, --fsdp                  Use FSDP for training.
+  -t, --torchrun              Use torchrun for training. Specify the number of GPUs with --nproc_per_node.
+  -n. --nproc_per_node <num>  Number of GPUs to use with torchrun. Default: 4.
+  --clean                     Clean the output directory. Does not run the training.
+  -s, --slurm                 Dispatch Slurm job. For use on PACE cluster only.
+  -h, --help                  Show this help message.
 ```
 
 ## Config File:
 
 #### Script Parameters:
 
--   `mode`: str - Determines the mode of the script. Options: `'prep_data'`, `'train'`, `'test'`, `'incontextlearning_extract'`
--   `model_id`: str - Model ID for HuggingFace model. Ex: `'meta-llama/Meta-Llama-3-8b'`
--   `model_path`: str - Path to local model. Ex: `'./output/meta-llama-3-8b-qlora_no_robots/run_1/checkpoints'`
--   `dataset_id`: str - Dataset ID for HuggingFace dataset. Ex: 'HuggingFaceH4/no_robots'
--   `train_dataset_path`: str - Path to local preprocessed training dataset. Ex: `'./data/train_dataset.json'`
--   `test_dataset_path`: str - Path to local preprocessed test dataset. Ex: `'./data/test_dataset.json'`
--   `preprocessed`: bool - Whether to use local preprocessed data.
--   `max_seq_len`: int - Maximum sequence length for model. Ex: `2048`
--   `use_local_model`: bool - Whether to use local model.
--   `upload_model`: bool - Whether to upload model to HuggingFace.
+-   `mode`: str - Determines the mode of the script. Options: `'train'`, `'test'`
+-   `icl`: str - Specify which task to use ICL for. Options: `'none'`, `'extract'`
 -   `distill`: bool - Whether to use context distillation.
--   `use_instruct_template`: bool - Whether to use instruction template.
+-   `max_seq_len`: int - Maximum sequence length for model. Ex: `2048`
+-   `model_id`: str - Model ID for HuggingFace model. Ex: `'meta-llama/Meta-Llama-3-8b'`
+-   `model_path`: str - Path to local model. Ex: `'output/meta-llama-3-8b-qlora_no_robots/run_1/checkpoints'`
+-   `use_local_model`: bool - Whether to use local model.
+-   `is_peft`: bool - Whether to use PEFT.
+-   `upload_model`: bool - Whether to upload model to HuggingFace.
+-   `dataset_id`: str - Dataset ID for HuggingFace dataset. Ex: 'HuggingFaceH4/no_robots'
+-   `train_path`: str - Path to local preprocessed training dataset. Ex: `'data/train_data.json'`
+-   `test_path`: str - Path to local preprocessed test dataset. Ex: `'data/test_data.json'`
+-   `use_local_dataset`: bool - Whether to use local preprocessed data.
 
 #### Training Parameters:
 
