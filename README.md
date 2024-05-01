@@ -3,12 +3,12 @@
 CS 4644 Final Project
 
 ## To-Do:
-
--   [ ] Select Task for In-Context Learning
--   [ ] Implement Evaluation Metric for Task
--   [ ] Perform In-Context Learning based on certain Prompts
--   [ ] Implement Context Distillation for Task
--   [ ] Fine Tune via Context Distillation
+- [ ] Select Task for In-Context Learning
+- [ ] Implement Evaluation Metric for Task
+- [ ] Perform In-Context Learning based on certain Prompts
+- [ ] Implement Context Distillation for Task
+- [ ] Fine Tune via Context Distillation
+- [ ] Evaluate Context Distillation Results
 
 ## Dependencies:
 
