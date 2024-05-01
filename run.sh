@@ -1,7 +1,7 @@
 #!/bin/bash
 POSITIONAL_ARGS=()
 CONFIG="config/config.yaml"
-NPROC_PER_NODE=4
+NPROC_PER_NODE=1
 BATCH_FILE="output/slurm_job.sh"
 
 while [[ $# -gt 0 ]]; do
@@ -44,7 +44,7 @@ Options:
   -c, --config <config>       Path to the config file. Default: config/llama-3-8b-qlora.yaml.
   -f, --fsdp                  Use FSDP for training.
   -t, --torchrun              Use torchrun for training. Specify the number of GPUs with --nproc_per_node.
-  -n. --nproc_per_node <num>  Number of GPUs to use with torchrun. Default: 4.
+  -n. --nproc_per_node <num>  Number of GPUs to use with torchrun. Default: 1.
   -s, --slurm                 Dispatch Slurm job. For use on PACE cluster only.
   --gen-only                  Only generate slurm_job.sh file for manual dispatching.
   --clean                     Clean the output directory. Does not run the training.
@@ -94,7 +94,7 @@ if [ -n "$USE_SLURM" ]; then
   cat <<EOT > "$BATCH_FILE"
 #!/bin/bash
 #SBATCH --job-name=job_llama-3-icl
-#SBATCH --gres=gpu:H100:1
+#SBATCH --gres=gpu:H100:${NPROC_PER_NODE}
 #SBATCH --time=02:30:00
 #SBATCH --ntasks-per-node=8
 #SBATCH --cpus-per-task=4

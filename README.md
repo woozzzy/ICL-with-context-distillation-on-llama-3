@@ -52,7 +52,7 @@ Options:
 #### Script Parameters:
 
 -   `mode`: str - Determines the mode of the script. Options: `'train'`, `'test'`
--   `icl`: str - Specify which task to use ICL for. Options: `'none'`, `'extract'`
+-   `icl`: str - Specify which task to use ICL for. Only `'summarize'` implemented
 -   `distill`: bool - Whether to use context distillation.
 -   `max_seq_len`: int - Maximum sequence length for model. Ex: `2048`
 -   `model_id`: str - Model ID for HuggingFace model. Ex: `'meta-llama/Meta-Llama-3-8b'`
@@ -63,7 +63,6 @@ Options:
 -   `dataset_id`: str - Dataset ID for HuggingFace dataset. Ex: 'HuggingFaceH4/no_robots'
 -   `train_path`: str - Path to local preprocessed training dataset. Ex: `'data/train_data.json'`
 -   `test_path`: str - Path to local preprocessed test dataset. Ex: `'data/test_data.json'`
--   `references_path`: str - Path to dataset made of just the references column. Ex: `'data/references.json'`
 -   `use_local_dataset`: bool - Whether to use local preprocessed data.
 
 #### Training Parameters:
