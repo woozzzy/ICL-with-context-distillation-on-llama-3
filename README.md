@@ -38,13 +38,13 @@ pip install flash-attn --no-build-isolation
 ```bash
 Usage: run.sh [OPTIONS]
 Options:
--c, --config <config> Path to the config file. Default: config/llama-3-8b-qlora.yaml.
--f, --fsdp Use FSDP for training.
--t, --torchrun Use torchrun for training.
---nproc_per_node <num> Number of GPUs to use with torchrun. Default: 4.
--c, --clean Clean the output directory. Does not run the training.
--s, --slurm Dispatch Slurm job. For use on PACE cluster only.
--h, --help Show this help message.
+  -c, --config <config>       Path to the config file. Default: config/llama-3-8b-qlora.yaml.
+  -f, --fsdp                  Use FSDP for training.
+  -t, --torchrun              Use torchrun for training. Specify the number of GPUs with --nproc_per_node.
+  -n. --nproc_per_node <num>  Number of GPUs to use with torchrun. Default: 4.
+  -c, --clean                 Clean the output directory. Does not run the training.
+  -s, --slurm                 Dispatch Slurm job. For use on PACE cluster only.
+  -h, --help                  Show this help message.
 ```
 
 ## Config File:

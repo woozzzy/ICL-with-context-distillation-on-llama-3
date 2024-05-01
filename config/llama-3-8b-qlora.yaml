@@ -5,7 +5,7 @@ mode: 'incontextlearning_extract'
 
 ## HF Model ID and Local Path
 model_id: 'meta-llama/Meta-Llama-3-8B' # Hugging Face model id
-model_path: './output/meta-llama-3-8b-qlora_no_robots/run_1/checkpoints'
+model_path: './models/Meta-Llama-3-8B'
 
 ## HF Dataset ID and Local Path
 dataset_id: 'HuggingFaceH4/no_robots'
