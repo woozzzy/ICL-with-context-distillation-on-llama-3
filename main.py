@@ -74,16 +74,16 @@ def test(args, training_args):
 
     ############################    Model/Tokenizer    ############################
 
-    if args.use_local_model:
+    if args.is_peft:
         model = AutoPeftModelForCausalLM.from_pretrained(
-            args.model_path,
+            args.model_path if args.use_local_model else args.model_id,
             torch_dtype=torch.bfloat16,
             quantization_config={"load_in_4bit": True},
             device_map="auto",
         )
     else:
         model = AutoModelForCausalLM.from_pretrained(
-            args.model_id,
+            args.model_path if args.use_local_model else args.model_id,
             attn_implementation="flash_attention_2",  # "sdpa"
             torch_dtype=torch.bfloat16,
             use_cache=False if training_args.gradient_checkpointing else True,
@@ -156,21 +156,20 @@ def incontextlearning_extract(args, training_args):
 
     ############################    Model/Tokenizer    ############################
 
-    if args.use_local_model:
+    if args.is_peft:
         model = AutoPeftModelForCausalLM.from_pretrained(
-            args.model_path,
+            args.model_path if args.use_local_model else args.model_id,
             torch_dtype=torch.bfloat16,
             quantization_config={"load_in_4bit": True},
             device_map="auto",
         )
     else:
         model = AutoModelForCausalLM.from_pretrained(
-            args.model_id,
+            args.model_path if args.use_local_model else args.model_id,
             attn_implementation="flash_attention_2",  # "sdpa"
             torch_dtype=torch.bfloat16,
             use_cache=False if training_args.gradient_checkpointing else True,
         )
-
     tokenizer = AutoTokenizer.from_pretrained(args.model_path if args.use_local_model else args.model_id)
 
     ############################    Generate    ############################

@@ -60,6 +60,7 @@ Options:
 -   `preprocessed`: bool - Whether to use local preprocessed data.
 -   `max_seq_len`: int - Maximum sequence length for model. Ex: `2048`
 -   `use_local_model`: bool - Whether to use local model.
+-   `is_peft`: bool - Whether to use PEFT.
 -   `upload_model`: bool - Whether to upload model to HuggingFace.
 -   `distill`: bool - Whether to use context distillation.
 -   `use_instruct_template`: bool - Whether to use instruction template.

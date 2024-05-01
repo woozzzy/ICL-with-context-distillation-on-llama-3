@@ -20,6 +20,7 @@ max_seq_len: 3072 # 2048
 
 ## Boolean Flags
 use_local_model: false
+is_peft: false
 upload_model: false
 distill: false
 use_instruct_template: false

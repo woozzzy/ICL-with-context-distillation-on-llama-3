@@ -27,7 +27,7 @@ while [[ $# -gt 0 ]]; do
       USE_SLURM=1
       shift 
       ;;
-    -c|--clean)
+    --clean)
       CLEAN=1
       shift 
       ;;
