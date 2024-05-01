@@ -104,6 +104,76 @@ def test(args, training_args):
     logger.info(f"**Generated Answer:**\n{tokenizer.decode(response,skip_special_tokens=True)}")
 
 
+def incontextlearning_extract(args, training_args):
+    logger.info("In-context learning ...")
+
+    ############################    Dataset    ############################
+
+    dataset = load_dataset("HuggingFaceH4/no_robots", num_proc=args.num_workers, split="train")
+    dataset = dataset.filter(lambda x: x["category"] == "Extract")
+
+    random_indices = random.sample(range(len(dataset)), 10)
+    examples = dataset[random_indices]["messages"]
+    dataset = dataset.select((i for i in range(len(dataset)) if i not in set(random_indices)))
+
+    prompt = """Examples start:"""
+
+    for i in range(len(examples), step=2):
+        prompt += f"\n\n**Prompt:**\n{examples[i]['content']}\n**Response:**\n{examples[i+1]['content']}"
+
+    prompt = prompt + "\n\nExamples end."
+
+    def _add_prompt(sample):
+        if sample["messages"][0]["role"] == "system":
+            return sample
+        else:
+            sample["messages"] = [{"role": "system", "content": prompt}] + sample["messages"]
+            return sample
+
+    columns_to_remove = list(dataset.features)
+    columns_to_remove.remove("messages")
+    dataset = dataset.map(_add_prompt, remove_columns=columns_to_remove, batched=False)
+
+    dataset = dataset.filter(lambda x: len(x["messages"][1:]) % 2 == 0)
+    dataset.to_json("data/incontext_dataset.json", orient="records", force_ascii=False)
+
+    test_indices = random.sample(range(len(dataset)), 10)
+    test_samples = dataset[test_indices]["messages"][:2]
+
+    ############################    Model/Tokenizer    ############################
+
+    model = AutoPeftModelForCausalLM.from_pretrained(
+        args.model_path,
+        torch_dtype=torch.bfloat16,
+        quantization_config={"load_in_4bit": True},
+        device_map="auto",
+    )
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
+
+    ############################    Generate    ############################
+
+    input_ids = tokenizer.apply_chat_template(test_samples, add_generation_prompt=True, return_tensors="pt").to(
+        model.device
+    )
+    outputs = model.generate(
+        input_ids,
+        max_new_tokens=512,
+        eos_token_id=tokenizer.eos_token_id,
+        do_sample=True,
+        temperature=0.6,
+        top_p=0.9,
+    )
+    responses = outputs[0][input_ids.shape[-1] :]
+
+    ############################    Log for Visual Comparison    ############################
+
+    with open(os.path.join(training_args.output_dir, "incontext_samples.txt"), "w") as f:
+        for i, idx in enumerate(test_indices):
+            f.write(f"**Query {i+1}:**\n{dataset[idx]['messages'][1]['content']}\n")
+            f.write(f"**Original Answer {i+1}:**\n{dataset[idx]['messages'][2]['content']}\n")
+            f.write(f"**Generated Answer {i+1}:**\n{tokenizer.decode(responses[i],skip_special_tokens=True)}\n\n")
+
+
 def train(args, training_args):
     logger.info("Training ...")
     os.makedirs(os.path.join(output_path, "checkpoints"))
