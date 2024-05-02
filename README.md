@@ -9,12 +9,10 @@ CS 4644 Final Project
 ```bash
 $ conda create -n icl python=3.11
 $ conda activate icl
-$ conda install -c conda-forge cudatoolkit cudnn
 ```
 
 ### Pytorch: [See Docs](https://pytorch.org/get-started/locally/)  
 ```bash
-$ pip install -U torch torchvision torchaudio
 $ conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
 ```
 
