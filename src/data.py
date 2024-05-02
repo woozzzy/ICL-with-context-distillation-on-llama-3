@@ -124,11 +124,11 @@ def distill_sample(args, train_args, dataset, n=4):
         tfidf_matrix = tfidf_vectorizer.fit_transform(docs)
 
         # t-SNE for dimensionality reduction
-        tsne = TSNE(n_components=2, perplexity=3, random_state=args.seed)  # Set random_state for reproducibility
+        tsne = TSNE(n_components=2, perplexity=3, random_state=train_args.seed)  # Set random_state for reproducibility
         tfidf_tsne = tsne.fit_transform(tfidf_matrix.toarray())  # Ensure to convert sparse matrix to dense
 
         # KMeans Clustering
-        kmeans = KMeans(n_clusters=n, random_state=args.seed)
+        kmeans = KMeans(n_clusters=n, random_state=train_args.seed)
         labels = kmeans.fit_predict(tfidf_matrix)
 
         # Plotting the clusters

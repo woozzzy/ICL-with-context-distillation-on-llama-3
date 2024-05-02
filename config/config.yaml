@@ -12,7 +12,7 @@ model_id: 'meta-llama/Meta-Llama-3-8B' # Hugging Face model id
 model_path: 'models/Meta-Llama-3-8B'
 # model_id: 'meta-llama/Meta-Llama-3-70B' # Hugging Face model id
 # model_path: 'models/Meta-Llama-3-70B'
-use_local_model: true
+use_local_model: false
 upload_model: false
 is_peft: false
 is_instruct: false
