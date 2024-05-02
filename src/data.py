@@ -1,11 +1,11 @@
-import cudf
 import os
 import random
 import spacy
 import numpy as np
-from cuml.feature_extraction.text import TfidfVectorizer
-from cuml.cluster import KMeans
-from cuml.manifold import TSNE
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.manifold import TSNE
+from sklearn.cluster import KMeans
 from datasets import load_dataset
 from matplotlib import pyplot as plt
 from nltk.tokenize.treebank import TreebankWordDetokenizer
@@ -27,7 +27,7 @@ def get_dataset(args, train_args, split="train", use_icl=True):
 
         ############################    Base System Prompt    ############################
 
-        base = """You are LLAMA, a powerful AI assistant created by deep learning researchers to provide succinct and meaningful summaries on a variety of texts. Your expansive knowledge base allows you to engage in critical analysis of these texts to identify the most significant portions. In this task, you will help summarize news articles into a single concise headline. Here are a few examples on how to transform a detailed document into a brief summary:\n\n"""
+        base = """You are LLAMA, a powerful AI assistant created by deep learning researchers to provide succinct and meaningful summaries on a variety of texts. In this task, you will help summarize news articles into a single concise headline. Here are a few examples on how to transform a detailed document into a brief summary:\n\n"""
         context = ""
         instruction = "Write a concise summary/headline for the provided document."
 
@@ -49,7 +49,7 @@ def get_dataset(args, train_args, split="train", use_icl=True):
             ## Add Context to Prompt
             for sample in samples:
                 doc, summ = sample["document"], sample["summary"]
-                if args.distill:
+                if args.distill_process:
                     doc = distill_process(doc)
                     summ = distill_process(summ)
 
@@ -62,7 +62,7 @@ def get_dataset(args, train_args, split="train", use_icl=True):
 
         def _format(sample):
             doc, summ = sample["document"], sample["summary"]
-            if args.distill:
+            if args.distill_process:
                 doc = distill_process(doc)
                 summ = distill_process(summ)
 
@@ -112,47 +112,46 @@ def distill_process(text):
 
 
 def distill_sample(args, train_args, dataset, n=4):
-    if args.distill:
-        ## KMeans Clustering -> Select and index from each cluster
-        docs_pandas = dataset["document"].to_pandas()
-        summs_pandas = dataset["summary"].to_pandas()
+    if args.distill_sample:
+        # Convert dataset to pandas DataFrame
+        pd_df = pd.DataFrame(dataset)
+        pd_df["document"] = pd_df["document"].astype(str)
 
-        docs = cudf.DataFrame.from_pandas(docs_pandas)
-        summs = cudf.DataFrame.from_pandas(summs_pandas)
+        docs = pd_df["document"]
 
-        ## TF-IDF Vectorization
+        # TF-IDF Vectorization
         tfidf_vectorizer = TfidfVectorizer(max_features=1000)
         tfidf_matrix = tfidf_vectorizer.fit_transform(docs)
 
-        ## t-SNE
-        tsne = TSNE(n_components=2, perplexity=3)  # Adjust perplexity according to your data size
-        tfidf_tsne = tsne.fit_transform(tfidf_matrix)
+        # t-SNE for dimensionality reduction
+        tsne = TSNE(n_components=2, perplexity=3, random_state=train_args.seed)  # Set random_state for reproducibility
+        tfidf_tsne = tsne.fit_transform(tfidf_matrix.toarray())  # Ensure to convert sparse matrix to dense
 
-        ## KMeans
-        kmeans = KMeans(n_clusters=n, random_state=args.seed)
+        # KMeans Clustering
+        kmeans = KMeans(n_clusters=n, random_state=train_args.seed)
         labels = kmeans.fit_predict(tfidf_matrix)
 
-        ## Plot
-        img_path = os.path.join(train_args.output_dir, "kmeans_context_sampling.png")
+        # Plotting the clusters
         plt.figure(figsize=(8, 6))
-        scatter = plt.scatter(
-            tfidf_tsne[:, 0].to_array(), tfidf_tsne[:, 1].to_array(), c=labels.to_array(), cmap="viridis"
-        )
+        scatter = plt.scatter(tfidf_tsne[:, 0], tfidf_tsne[:, 1], c=labels, cmap="viridis")
         plt.title("TF-IDF Vectors reduced to 2D with t-SNE and clustered by k-means")
         plt.xlabel("t-SNE Component 1")
         plt.ylabel("t-SNE Component 2")
         plt.colorbar(scatter)
+        img_path = os.path.join(train_args.output_dir, "kmeans_context_sampling.png")
         plt.savefig(img_path)
         plt.show()
 
-        ## Select one sample from each cluster
+        # Select one sample from each cluster
         sample_idx = []
         for cluster_id in range(n):
-            indices = np.where(kmeans.labels_ == cluster_id)[0]
-            sample_idx.append(np.random.choice(indices))
+            indices = np.where(labels == cluster_id)[0]
+            selected_index = np.random.choice(indices)
+            sample_idx.append(selected_index)
 
         return sample_idx
     else:
+        # Fallback to random sampling if distillation is not enabled
         return random.sample(range(len(dataset)), n)
 
 

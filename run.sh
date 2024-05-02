@@ -101,7 +101,7 @@ if [ -n "$USE_SLURM" ]; then
 #SBATCH --mem-per-cpu=16GB
 #SBATCH --output=output/job_%j.out
 module load anaconda3
-conda activate llama
+conda activate icl
 echo "\$PWD"
 echo "${RUN_COMMAND[@]}"
 ${RUN_COMMAND[@]}

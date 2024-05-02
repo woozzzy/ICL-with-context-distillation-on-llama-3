@@ -23,7 +23,7 @@ def test(args, train_args):
     ############################    Dataset    ############################
 
     dataset = get_dataset(args, train_args, split="train")
-    sample_idx = random.sample(range(len(dataset)), 3)
+    sample_idx = random.sample(range(len(dataset)), 25)
     dataset = dataset.select(sample_idx)
     samples = [x[:2] for x in dataset["messages"]]
 
@@ -84,13 +84,9 @@ def test(args, train_args):
     prompts, references = [], []
     for sample in dataset["messages"]:
         prompts.append(sample[0]["content"] + sample[1]["content"])
-        references.append(sample[2]["content"])
+        references.append(sample[2]["content"][:10])
 
     predictions = tokenizer.batch_decode(outputs, skip_special_tokens=True)
-
-    pprint(f"Prompts: {len(prompts)}")
-    pprint(f"References: {len(references)}")
-    pprint(f"Predictions: {len(predictions)}")
 
     rouge = evaluate.load("rouge")
     results = rouge.compute(predictions=predictions, references=references)
@@ -103,9 +99,9 @@ def test(args, train_args):
         f.write(f"Results: {results}\n")
         for x in zip(prompts, references, predictions):
             f.write("------------------------------------------\n\n")
-            f.write(f"Prompt:\n{x[0]}\n\n")
-            f.write(f"Reference:\n{x[1]}\n\n")
-            f.write(f"Prediction:\n{x[2]}\n\n\n")
+            f.write(f"Prompt:\n\t{x[0]}\n\n")
+            f.write(f"Reference:\n\t{x[1]}\n\n")
+            f.write(f"Prediction:\n\t{x[2]}\n\n\n")
 
 
 def train(args, train_args):
