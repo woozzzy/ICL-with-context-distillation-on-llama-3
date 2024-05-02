@@ -2,23 +2,53 @@
 
 CS 4644 Final Project
 
-## To-Do:
+## Environment Setup:
 
--   [ ] Implement Context Distillation for Task
--   [ ] Evaluate Context Distillation Results
-
-## Dependencies:
+### Conda:
 
 ```bash
-conda create -n llama python=3.11 \
-conda activate llama \
-pip install -U torch torchvision torchaudio \
-pip install -U transformers datasets accelerate evaluate bitsandbytes huggingface_hub trl peft rouge-score absl-py nltk python-dotenv pandas \
-conda install -c conda-forge cudatoolkit-dev -y \
-pip install flash-attn --no-build-isolation
+$ conda create -n llama python=3.11
+$ conda activate llama
 ```
 
-## HuggingFace Authentication:
+### Pytorch: [See Docs](https://pytorch.org/get-started/locally/)  
+```bash
+$ pip install -U torch torchvision torchaudio
+```
+
+### HuggingFace: 
+```bash
+$ pip install -U transformers datasets accelerate evaluate bitsandbytes huggingface_hub trl peft nltk rouge-score absl-py
+```
+
+### Flash Attention:
+```bash
+$ conda install -c conda-forge cudatoolkit-dev -y 
+$ pip install flash-attn --no-build-isolation 
+```
+
+### spaCy:
+```bash
+$ pip install spacy
+$ python -m spacy download en_core_web_md
+```
+
+### RAPIDS CuML: [See Docs](https://docs.rapids.ai/install)
+```bash
+$ pip install \
+    --extra-index-url=https://pypi.nvidia.com \
+    cudf-cu11==24.4.* dask-cudf-cu11==24.4.* cuml-cu11==24.4.* \
+    cugraph-cu11==24.4.* cuspatial-cu11==24.4.* cuproj-cu11==24.4.* \
+    cuxfilter-cu11==24.4.* cucim-cu11==24.4.* pylibraft-cu11==24.4.* \
+    raft-dask-cu11==24.4.* cuvs-cu11==24.4.*
+```
+
+### Misc:
+```bash
+$ pip install python-dotenv pandas matplotlib
+```
+
+### HuggingFace Authentication:
 
 -   Create `.env` file in root directory using `.env.example` as a template.
 -   Copy your HuggingFace Access Token to `.env`.
@@ -28,7 +58,7 @@ pip install flash-attn --no-build-isolation
 
 > _If torchrun is throwing sigterms, it is likely an out of memory issue. Try increasing CPU memory._
 
-#### Using `run.sh` script
+### Using `run.sh` script
 
 ```
 Usage: run.sh [OPTIONS]
@@ -45,11 +75,12 @@ Options:
 
 ## Config File:
 
-#### Script Parameters:
+### Script Parameters:
 
 -   `mode`: str - Determines the mode of the script. Options: `'train'`, `'test'`
 -   `icl`: str - Specify which task to use ICL for. Only `'summarize'` implemented
--   `distill`: bool - Whether to use context distillation.
+-   `distill_process`: bool - Whether to use context distillation via processing the text/
+-   `distill_sample`: bool - Whether to use context distillation via selecting better examples. 
 -   `max_seq_len`: int - Maximum sequence length for model. Ex: `2048`
 -   `model_id`: str - Model ID for HuggingFace model. Ex: `'meta-llama/Meta-Llama-3-8b'`
 -   `model_path`: str - Path to local model. Ex: `'output/meta-llama-3-8b-qlora_no_robots/run_1/checkpoints'`
@@ -61,7 +92,7 @@ Options:
 -   `test_path`: str - Path to local preprocessed test dataset. Ex: `'data/test_data.json'`
 -   `use_local_dataset`: bool - Whether to use local preprocessed data.
 
-#### Training Parameters:
+### Training Parameters:
 
 -   `output_dir`: str - Output directory for training. Will be set automatically.
 -   `learning_rate`: float - Learning rate for training. Ex: `1e-5`

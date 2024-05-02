@@ -1,10 +1,17 @@
+import cudf
 import os
-import json
 import random
+import spacy
+import numpy as np
+from cuml.feature_extraction.text import TfidfVectorizer
+from cuml.cluster import KMeans
+from cuml.manifold import TSNE
 from datasets import load_dataset
-from src.utils import (
-    logger,
-)
+from matplotlib import pyplot as plt
+from nltk.tokenize.treebank import TreebankWordDetokenizer
+from src.utils import logger
+
+nlp = spacy.load("en_core_web_md")
 
 
 def get_dataset(args, train_args, split="train", use_icl=True):
@@ -16,63 +23,138 @@ def get_dataset(args, train_args, split="train", use_icl=True):
         dataset = load_dataset("json", data_files=data_path, num_proc=args.num_workers, split=split)
     else:
         dataset = load_dataset(args.dataset_id, num_proc=args.num_workers, split=split)
-        dataset = dataset.shuffle()
-        dataset = dataset.select(range(1000))
+        dataset = dataset.select(random.sample(range(len(dataset)), 1000))
 
         ############################    Base System Prompt    ############################
-        
+
         base = """You are LLAMA, a powerful AI assistant created by deep learning researchers to provide succinct and meaningful summaries on a variety of texts. Your expansive knowledge base allows you to engage in critical analysis of these texts to identify the most significant portions. In this task, you will help summarize news articles into a single concise headline. Here are a few examples on how to transform a detailed document into a brief summary:\n\n"""
         context = ""
         instruction = "Write a concise summary/headline for the provided document."
-        
+
         ############################    In-Context Learning    ############################
-        
+
         logger.info(f"Applying In-Context Learning for Task: {args.icl}")
 
         ## Filter dataset to match task
-        if args.icl != 'summarize':
+        if args.icl != "summarize":
             raise ValueError("Gigaword only support summarization tasks")
-        
+
         ## Construct and Add Context
         if use_icl:
             ## Sample Examples from Dataset
-            example_idx = random.sample(range(len(dataset)), 4)
-            examples = dataset.select(example_idx)
-            dataset = dataset.select(([i for i in range(len(dataset)) if i not in set(example_idx)]))
-                    
+            sample_idx = distill_sample(args, train_args, dataset, n=4)
+            samples = dataset.select(sample_idx)
+            dataset = dataset.select(([i for i in range(len(dataset)) if i not in set(sample_idx)]))
+
             ## Add Context to Prompt
-            for ex in examples:
-                context += (f"Human: {instruction}\n")
-                context += (f"Document: {ex['document']}\n")
-                context += (f"Summary: {ex['summary']}\n\n")
+            for sample in samples:
+                doc, summ = sample["document"], sample["summary"]
+                if args.distill:
+                    doc = distill_process(doc)
+                    summ = distill_process(summ)
+
+                context += f"Example: {instruction}\n\tDocument - {doc}\n"
+                context += f"Example: Summary - {summ}\n\n"
 
         ############################    Convert to Chat Format    ############################
 
         sys_prompt = base + context
 
         def _format(sample):
-            task = {'role': 'user', 'content': f"{instruction}\nDocument: {sample['document']}"}
-            reference = {"role": "assistant", "content": f"{sample['summary']}"}
-            sample['document'] = [{'role': 'system', 'content': sys_prompt}, task, reference]
+            doc, summ = sample["document"], sample["summary"]
+            if args.distill:
+                doc = distill_process(doc)
+                summ = distill_process(summ)
+
+            task = {"role": "user", "content": f"{instruction}\n\tDocument - {doc}"}
+            reference = {"role": "assistant", "content": f"Summary - {summ}"}
+            sample["document"] = [{"role": "system", "content": sys_prompt}, task, reference]
             return sample
-        
+
         columns_to_remove = list(dataset.features)
-        columns_to_remove.remove('document')
+        columns_to_remove.remove("document")
         dataset = dataset.map(_format, remove_columns=columns_to_remove, batched=False)
-        dataset = dataset.rename_column('document', 'messages')
+        dataset = dataset.rename_column("document", "messages")
 
         ############################    Filter Conversations with Odd # of Turns    ############################
-        
+
         dataset = dataset.filter(lambda x: len(x["messages"][1:]) % 2 == 0)
 
         ############################    Save to Disk    ############################
 
         if os.path.exists(data_path):
             os.remove(data_path)
-        
+
         dataset.to_json(data_path, orient="records", force_ascii=False)
-    
+
     return dataset
+
+
+def distill_process(text):
+    def _simplify_sentence(text):
+        doc = nlp(text)
+        ret = []
+        for token in doc:
+            if token.dep_ in ["nsubj", "ROOT", "dobj", "pobj", "attr"]:
+                ret.append(token.text)
+
+        return TreebankWordDetokenizer().detokenize(ret)
+
+    def _example_distill_method(text):
+        return text
+
+    functions = [_simplify_sentence, _example_distill_method]
+
+    for fn in functions:
+        text = fn(text)
+
+    return text
+
+
+def distill_sample(args, train_args, dataset, n=4):
+    if args.distill:
+        ## KMeans Clustering -> Select and index from each cluster
+        docs_pandas = dataset["document"].to_pandas()
+        summs_pandas = dataset["summary"].to_pandas()
+
+        docs = cudf.DataFrame.from_pandas(docs_pandas)
+        summs = cudf.DataFrame.from_pandas(summs_pandas)
+
+        ## TF-IDF Vectorization
+        tfidf_vectorizer = TfidfVectorizer(max_features=1000)
+        tfidf_matrix = tfidf_vectorizer.fit_transform(docs)
+
+        ## t-SNE
+        tsne = TSNE(n_components=2, perplexity=3)  # Adjust perplexity according to your data size
+        tfidf_tsne = tsne.fit_transform(tfidf_matrix)
+
+        ## KMeans
+        kmeans = KMeans(n_clusters=n, random_state=args.seed)
+        labels = kmeans.fit_predict(tfidf_matrix)
+
+        ## Plot
+        img_path = os.path.join(train_args.output_dir, "kmeans_context_sampling.png")
+        plt.figure(figsize=(8, 6))
+        scatter = plt.scatter(
+            tfidf_tsne[:, 0].to_array(), tfidf_tsne[:, 1].to_array(), c=labels.to_array(), cmap="viridis"
+        )
+        plt.title("TF-IDF Vectors reduced to 2D with t-SNE and clustered by k-means")
+        plt.xlabel("t-SNE Component 1")
+        plt.ylabel("t-SNE Component 2")
+        plt.colorbar(scatter)
+        plt.savefig(img_path)
+        plt.show()
+
+        ## Select one sample from each cluster
+        sample_idx = []
+        for cluster_id in range(n):
+            indices = np.where(kmeans.labels_ == cluster_id)[0]
+            sample_idx.append(np.random.choice(indices))
+
+        return sample_idx
+    else:
+        return random.sample(range(len(dataset)), n)
+
 
 def get_template(args):
 
@@ -88,10 +170,10 @@ def get_template(args):
             "{% elif message['role'] == 'user' %}"
             "{{ '\n\nHuman: ' + message['content'] +  eos_token }}"
             "{% elif message['role'] == 'assistant' %}"
-            "{{ '\n\Summary: '  + message['content'] +  eos_token  }}"
+            "{{ '\n\nAssistant: '  + message['content'] +  eos_token  }}"
             "{% endif %}"
             "{% endfor %}"
             "{% if add_generation_prompt %}"
-            "{{ '\n\Summary: ' }}"
+            "{{ '\n\nAssistant: Summary - ' }}"
             "{% endif %}"
         )
