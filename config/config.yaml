@@ -3,12 +3,13 @@
 ## General Params
 mode: 'test' # 'train', 'test'
 icl: 'summarize' # 'summarize', 'extract', 'qa'
-distill: true
+distill_process: false
+distill_sample: true
 max_seq_len: 2048
 
 ## Model Params
-model_id: 'meta-llama/Meta-Llama-3-8B' # Hugging Face model id
-model_path: 'models/Meta-Llama-3-8B'
+model_id: 'meta-llama/Meta-Llama-3-70B' # Hugging Face model id
+model_path: 'models/Meta-Llama-3-70B'
 use_local_model: true
 upload_model: false
 is_peft: false
@@ -57,7 +58,7 @@ bf16: true
 tf32: true
 
 ## Miscellaneous
-seed: -1 # -1 for random
+seed: 42 # -1 for random
 disable_tqdm: False
 load_best_model_at_end: True
 

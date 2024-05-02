@@ -18,13 +18,14 @@ from src.args import ScriptArgs
 from src.utils import *
 from src.data import *
 
+
 def test(args, train_args):
     ############################    Dataset    ############################
 
     dataset = get_dataset(args, train_args, split="train")
     sample_idx = random.sample(range(len(dataset)), 3)
     dataset = dataset.select(sample_idx)
-    samples = [x[:2] for x in dataset['messages']]
+    samples = [x[:2] for x in dataset["messages"]]
 
     ############################    Model    ############################
 
@@ -48,10 +49,7 @@ def test(args, train_args):
     ############################    Tokenizer    ############################
 
     tokenizer = AutoTokenizer.from_pretrained(
-        model_id, 
-        use_fast=True, 
-        padding_side='left', 
-        chat_template=get_template(args)
+        model_id, use_fast=True, padding_side="left", chat_template=get_template(args)
     )
     tokenizer.pad_token = tokenizer.eos_token
 
@@ -61,12 +59,11 @@ def test(args, train_args):
         padding=True,
         truncation=True,
         add_generation_prompt=True,
-        return_tensors="pt"
+        return_tensors="pt",
     ).to(model.device)
 
-
     ############################    Inference    ############################
-    
+
     logger.info("Beginning generation ...")
 
     outputs = model.generate(
@@ -77,18 +74,17 @@ def test(args, train_args):
         temperature=0.6,
         top_p=0.9,
     )
-    outputs = [x[input_ids.shape[-1]:] for x in outputs]
+    outputs = [x[input_ids.shape[-1] :] for x in outputs]
     logger.info("Finished generation.")
 
     ############################    Evaluation    ############################
 
     logger.info("Constructing outputs for evaluation ...")
 
-
     prompts, references = [], []
-    for sample in dataset['messages']:
-        prompts.append(sample[0]['content'] + sample[1]['content'])
-        references.append(sample[2]['content'])
+    for sample in dataset["messages"]:
+        prompts.append(sample[0]["content"] + sample[1]["content"])
+        references.append(sample[2]["content"])
 
     predictions = tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
@@ -96,7 +92,7 @@ def test(args, train_args):
     pprint(f"References: {len(references)}")
     pprint(f"Predictions: {len(predictions)}")
 
-    rouge = evaluate.load('rouge')
+    rouge = evaluate.load("rouge")
     results = rouge.compute(predictions=predictions, references=references)
 
     logger.info(f"Results: {results}")
@@ -111,15 +107,16 @@ def test(args, train_args):
             f.write(f"Reference:\n{x[1]}\n\n")
             f.write(f"Prediction:\n{x[2]}\n\n\n")
 
-    
+
 def train(args, train_args):
     raise NotImplementedError("Training is not yet implemented for gigaword.")
+
 
 if __name__ == "__main__":
     hf_login()
 
     ############################    Parse Args and Config    ############################
-    
+
     parser = TrlParser((ScriptArgs, TrainingArguments))
     args, train_args = parser.parse_args_and_config()
 

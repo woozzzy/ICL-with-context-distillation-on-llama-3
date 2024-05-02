@@ -1,10 +1,12 @@
 from dataclasses import dataclass, field
 
+
 @dataclass
 class ScriptArgs:
     mode: str = field(default="train", metadata={"help": "Mode to run the script in"})
-    icl: str = field(default='none', metadata={"help": "Options: 'none', 'extract'"})
-    distill: bool = field(default=False, metadata={"help": "Distill model"})
+    icl: str = field(default="none", metadata={"help": "Options: 'none', 'extract'"})
+    distill_process: bool = field(default=False, metadata={"help": "Distill the context via an external model"})
+    distill_sample: bool = field(default=False, metadata={"help": "Distill the context via better example selection"})
     max_seq_len: int = field(default=2048, metadata={"help": "Max sequence length"})
     ## Model Params
     model_id: str = field(default="meta-llama/Meta-Llama-3-8b", metadata={"help": "HF Model ID"})
