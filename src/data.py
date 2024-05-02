@@ -2,7 +2,7 @@ import os
 import json
 import random
 from datasets import load_dataset
-from .utils import (
+from src.utils import (
     logger,
 )
 
