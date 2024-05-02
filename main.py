@@ -14,9 +14,9 @@ from transformers import (
 from trl.commands.cli_utils import TrlParser
 from trl import SFTTrainer
 
-from src.args import ScriptArgs
-from src.utils import *
-from src.data import *
+from .src.args import ScriptArgs
+from .src.utils import *
+from .src.data import *
 
 def test(args, train_args):
     ############################    Dataset    ############################

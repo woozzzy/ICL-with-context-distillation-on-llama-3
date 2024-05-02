@@ -2,7 +2,7 @@ import os
 import json
 import random
 from datasets import load_dataset
-from src.utils import (
+from .utils import (
     logger,
 )
 
@@ -42,17 +42,17 @@ def get_dataset(args, train_args, split="train", use_icl=True):
                     
             ## Add Context to Prompt
             for ex in examples:
-                context += (f"Human: {instruction}\n")
-                context += (f"Document: {ex['document']}\n")
-                context += (f"Summary: {ex['summary']}\n\n")
+                context += (f"ExampleHuman: {instruction}\n")
+                context += (f"\tDocument - {ex['document']}\n")
+                context += (f"ExampleAssistant: Summary - {ex['summary']}\n\n")
 
         ############################    Convert to Chat Format    ############################
 
         sys_prompt = base + context
 
         def _format(sample):
-            task = {'role': 'user', 'content': f"{instruction}\nDocument: {sample['document']}"}
-            reference = {"role": "assistant", "content": f"{sample['summary']}"}
+            task = {'role': 'user', 'content': f"{instruction}\n\tDocument - {sample['document']}"}
+            reference = {"role": "assistant", "content": f"Summary - {sample['summary']}"}
             sample['document'] = [{'role': 'system', 'content': sys_prompt}, task, reference]
             return sample
         
@@ -88,10 +88,10 @@ def get_template(args):
             "{% elif message['role'] == 'user' %}"
             "{{ '\n\nHuman: ' + message['content'] +  eos_token }}"
             "{% elif message['role'] == 'assistant' %}"
-            "{{ '\n\Summary: '  + message['content'] +  eos_token  }}"
+            "{{ '\n\nAssistant: '  + message['content'] +  eos_token  }}"
             "{% endif %}"
             "{% endfor %}"
             "{% if add_generation_prompt %}"
-            "{{ '\n\Summary: ' }}"
+            "{{ '\n\nAssistant: Summary - ' }}"
             "{% endif %}"
         )
