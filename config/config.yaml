@@ -3,7 +3,7 @@
 ## General Params
 mode: 'test' # 'train', 'test'
 icl: 'summarize' # 'summarize', 'extract', 'qa'
-distill: false
+distill: true
 max_seq_len: 2048
 
 ## Model Params

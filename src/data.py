@@ -1,11 +1,13 @@
 import os
-import json
 import random
+import spacy
 from datasets import load_dataset
+from nltk.tokenize.treebank import TreebankWordDetokenizer
 from src.utils import (
     logger,
 )
 
+nlp = spacy.load("en_core_web_md")
 
 def get_dataset(args, train_args, split="train", use_icl=True):
     logger.info("Loading data ...")
@@ -36,23 +38,32 @@ def get_dataset(args, train_args, split="train", use_icl=True):
         ## Construct and Add Context
         if use_icl:
             ## Sample Examples from Dataset
-            example_idx = random.sample(range(len(dataset)), 4)
-            examples = dataset.select(example_idx)
-            dataset = dataset.select(([i for i in range(len(dataset)) if i not in set(example_idx)]))
+            sample_idx = random.sample(range(len(dataset)), 4)
+            samples = dataset.select(sample_idx)
+            dataset = dataset.select(([i for i in range(len(dataset)) if i not in set(sample_idx)]))
                     
             ## Add Context to Prompt
-            for ex in examples:
-                context += (f"ExampleHuman: {instruction}\n")
-                context += (f"\tDocument - {ex['document']}\n")
-                context += (f"ExampleAssistant: Summary - {ex['summary']}\n\n")
+            for sample in samples:
+                doc, summ = sample['document'], sample['summary']
+                if  args.distill:
+                    doc = distill(doc)
+                    summ = distill(summ)
+                
+                context += (f"Example: {instruction}\n\tDocument - {doc}\n")
+                context += (f"Example: Summary - {summ}\n\n")
 
         ############################    Convert to Chat Format    ############################
 
         sys_prompt = base + context
 
         def _format(sample):
-            task = {'role': 'user', 'content': f"{instruction}\n\tDocument - {sample['document']}"}
-            reference = {"role": "assistant", "content": f"Summary - {sample['summary']}"}
+            doc, summ = sample['document'], sample['summary']
+            if  args.distill:
+                doc = distill(doc)
+                summ = distill(summ)
+
+            task = {'role': 'user', 'content': f"{instruction}\n\tDocument - {doc}"}
+            reference = {"role": "assistant", "content": f"Summary - {summ}"}
             sample['document'] = [{'role': 'system', 'content': sys_prompt}, task, reference]
             return sample
         
@@ -73,6 +84,30 @@ def get_dataset(args, train_args, split="train", use_icl=True):
         dataset.to_json(data_path, orient="records", force_ascii=False)
     
     return dataset
+
+def distill(text):
+    def _simplify_sentence(text):    
+        doc = nlp(text)
+        ret = []
+        for token in doc:
+            if token.dep_ in ['nsubj', 'ROOT', 'dobj', 'pobj', 'attr']:
+                ret.append(token.text)
+
+        return TreebankWordDetokenizer().detokenize(ret)
+
+    def _example_distill_method(text):
+        return text
+
+    functions = [
+        _simplify_sentence,
+        _example_distill_method
+    ]
+
+    for fn in functions:
+        text = fn(text)
+    
+    return text
+
 
 def get_template(args):
 

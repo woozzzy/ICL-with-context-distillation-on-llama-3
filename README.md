@@ -13,9 +13,10 @@ CS 4644 Final Project
 conda create -n llama python=3.11 \
 conda activate llama \
 pip install -U torch torchvision torchaudio \
-pip install -U transformers datasets accelerate evaluate bitsandbytes huggingface_hub trl peft rouge-score absl-py nltk python-dotenv pandas \
+pip install -U transformers datasets accelerate evaluate bitsandbytes huggingface_hub trl peft rouge-score absl-py nltk spacy python-dotenv pandas \
 conda install -c conda-forge cudatoolkit-dev -y \
-pip install flash-attn --no-build-isolation
+pip install flash-attn --no-build-isolation \
+python -m spacy download en_core_web_md
 ```
 
 ## HuggingFace Authentication:
