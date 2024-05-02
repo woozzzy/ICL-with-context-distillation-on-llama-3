@@ -8,8 +8,10 @@ distill_sample: true
 max_seq_len: 2048
 
 ## Model Params
-model_id: 'meta-llama/Meta-Llama-3-70B' # Hugging Face model id
-model_path: 'models/Meta-Llama-3-70B'
+model_id: 'meta-llama/Meta-Llama-3-8B' # Hugging Face model id
+model_path: 'models/Meta-Llama-3-8B'
+# model_id: 'meta-llama/Meta-Llama-3-70B' # Hugging Face model id
+# model_path: 'models/Meta-Llama-3-70B'
 use_local_model: true
 upload_model: false
 is_peft: false

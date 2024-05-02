@@ -7,13 +7,15 @@ CS 4644 Final Project
 ### Conda:
 
 ```bash
-$ conda create -n llama python=3.11
-$ conda activate llama
+$ conda create -n icl python=3.11
+$ conda activate icl
+$ conda install -c conda-forge cudatoolkit cudnn
 ```
 
 ### Pytorch: [See Docs](https://pytorch.org/get-started/locally/)  
 ```bash
 $ pip install -U torch torchvision torchaudio
+$ conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
 ```
 
 ### HuggingFace: 
@@ -33,19 +35,9 @@ $ pip install spacy
 $ python -m spacy download en_core_web_md
 ```
 
-### RAPIDS CuML: [See Docs](https://docs.rapids.ai/install)
-```bash
-$ pip install \
-    --extra-index-url=https://pypi.nvidia.com \
-    cudf-cu11==24.4.* dask-cudf-cu11==24.4.* cuml-cu11==24.4.* \
-    cugraph-cu11==24.4.* cuspatial-cu11==24.4.* cuproj-cu11==24.4.* \
-    cuxfilter-cu11==24.4.* cucim-cu11==24.4.* pylibraft-cu11==24.4.* \
-    raft-dask-cu11==24.4.* cuvs-cu11==24.4.*
-```
-
 ### Misc:
 ```bash
-$ pip install python-dotenv pandas matplotlib
+$ pip install python-dotenv pandas matplotlib scikit-learn
 ```
 
 ### HuggingFace Authentication:
